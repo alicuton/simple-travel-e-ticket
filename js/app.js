@@ -703,7 +703,7 @@ function exportPDF() {
     width: 210mm !important;
     zoom: 0.905 !important;
     margin: 0 auto !important;
-    padding: 20px !important;
+    padding: 30px !important;
     box-sizing: border-box !important;
     page-break-inside: auto !important;
   }
@@ -724,23 +724,39 @@ function exportPDF() {
 
   html = html.replace('</head>', printCSS + '</head>');
 
-  const win = window.open('', '_blank', 'width=950,height=800');
-  if (!win) {
-    showToast('⚠️ Trình duyệt chặn popup — vui lòng cho phép popup để xuất PDF', 'error');
-    return;
+  // Use invisible print iframe to avoid browser popup blockers completely!
+  let printIframe = document.getElementById('__print_iframe__');
+  if (printIframe) {
+    printIframe.remove();
   }
-  win.document.write(html);
-  win.document.close();
+  printIframe = document.createElement('iframe');
+  printIframe.id = '__print_iframe__';
+  printIframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+  document.body.appendChild(printIframe);
 
-  win.onload = () => {
-    setTimeout(() => {
-      win.focus();
-      win.print();
-    }, 400);
-  };
+  const pDoc = printIframe.contentDocument || printIframe.contentWindow.document;
+  pDoc.open();
+  pDoc.write(html);
+  pDoc.close();
+
+  showToast('📄 Đang mở hộp thoại In / Lưu PDF...', 'info');
+
   setTimeout(() => {
-    try { win.focus(); win.print(); } catch {}
-  }, 1500);
+    try {
+      printIframe.contentWindow.focus();
+      printIframe.contentWindow.print();
+    } catch (err) {
+      console.warn('Print iframe error, fallback to window.open:', err);
+      const win = window.open('', '_blank');
+      if (win) {
+        win.document.write(html);
+        win.document.close();
+        setTimeout(() => { win.focus(); win.print(); }, 400);
+      } else {
+        showToast('⚠️ Vui lòng cho phép popup để in PDF', 'error');
+      }
+    }
+  }, 400);
 }
 
 // ─── Export: Capture ticket to canvas (With Padding & Guaranteed Logo) ───
