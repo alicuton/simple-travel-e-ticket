@@ -1,0 +1,5 @@
+# Scratch and temporary testing files
+scratch/
+node_modules/
+.DS_Store
+*.log
