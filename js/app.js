@@ -282,8 +282,7 @@ table[style*="210mm"] {
 </style>`;
 
   return out.includes('</head>')
-    ? out.replace('</head>', css + '
-</head>')
+    ? out.replace('</head>', css + '\n</head>')
     : css + out;
 }
 
@@ -747,11 +746,10 @@ function exportPDF() {
 
   normalizePassengerDetailsAndLayout(iDoc);
 
-  let html = '<!DOCTYPE html>
-' + iDoc.documentElement.outerHTML;
+  let html = '<!DOCTYPE html>\n' + iDoc.documentElement.outerHTML;
 
   // Ensure Simple Travel logo URL is base64
-  html = html.replace(/https?://l8uim6bskq7o.cmccdn.net/[^"']+/gi, SIMPLE_TRAVEL_LOGO_BASE64);
+  html = html.replace(/https?:\/\/l8uim6bskq7o\.cmccdn\.net\/[^"']+/gi, SIMPLE_TRAVEL_LOGO_BASE64);
 
   // Print CSS: A4 with 10mm (1cm) margin on all 4 sides.
   // Uses zoom: 0.905 on the 210mm table so it scales cleanly down to exactly 190mm
