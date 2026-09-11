@@ -192,6 +192,9 @@ function colorizeHTML(html, hex, useGradient) {
     out = out.split(c).join(hex);
   });
 
+  // Remove dashed line under Terminal row directly from HTML
+  out = out.replace(/<tr\s+style="[^"]*border-top:\s*1px\s+dashed[^"]*"[^>]*>/gi, '<tr style="border-collapse: collapse;">');
+
   const headerBg = useGradient
     ? `linear-gradient(135deg, ${hex} 0%, ${dark} 100%)`
     : hex;
@@ -205,6 +208,30 @@ td[style*="border: 1px solid"], td[style*="border:1px solid"] { border-color: va
 td[style*="border-right: 1px dashed"], td[style*="border-right:1px dashed"] { border-right-color: var(--sp) !important; }
 #eTktHeader { background: transparent !important; }
 #eTktHeader p, #eTktHeader span { color: var(--sp) !important; }
+
+/* ─── Remove dashed line under Terminal row ─── */
+tr[style*="border-top: 1px dashed"],
+tr[style*="border-top:1px dashed"],
+tr[style*="border-top: 1px dashed #cacaca"],
+tr[style*="border-top:1px dashed #cacaca"],
+*[style*="border-top: 1px dashed #cacaca"],
+*[style*="border-top:1px dashed #cacaca"] {
+  border-top: none !important;
+}
+
+/* ─── Remove boxes from Passenger Type, Gender, and DOB ─── */
+.be-passenger-details {
+  gap: 0 !important;
+}
+.be-passenger-details span,
+.be-passenger-type,
+.be-passenger-gender,
+.be-passenger-dob {
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
 
 /* ─── Perfect Centering & Padding Preservation in Preview ─── */
 html {
@@ -255,7 +282,8 @@ table[style*="210mm"] {
 </style>`;
 
   return out.includes('</head>')
-    ? out.replace('</head>', css + '\n</head>')
+    ? out.replace('</head>', css + '
+</head>')
     : css + out;
 }
 
@@ -364,6 +392,57 @@ function applyAirlineLogoToIframe() {
   resizeIframe();
 }
 
+// ─── Clean Ticket Layout & Passenger Tags ───────────────────
+function normalizePassengerDetailsAndLayout(root) {
+  if (!root) return;
+
+  // 1. Remove dashed line under Terminal row
+  root.querySelectorAll('tr[style*="border-top: 1px dashed"], tr[style*="border-top:1px dashed"]').forEach(tr => {
+    tr.style.borderTop = 'none';
+  });
+
+  // 2. Format passenger details: remove boxes, insert ' / ' between type and gender
+  root.querySelectorAll('.be-passenger-details').forEach(container => {
+    container.style.display = 'flex';
+    container.style.alignItems = 'center';
+    container.style.gap = '0';
+
+    const pType = container.querySelector('.be-passenger-type');
+    const pGender = container.querySelector('.be-passenger-gender');
+
+    if (pType) {
+      pType.style.border = 'none';
+      pType.style.padding = '0';
+      pType.style.borderRadius = '0';
+      pType.style.background = 'transparent';
+    }
+
+    if (pGender) {
+      pGender.style.border = 'none';
+      pGender.style.padding = '0';
+      pGender.style.borderRadius = '0';
+      pGender.style.background = 'transparent';
+    }
+
+    const typeText = pType ? pType.textContent.trim() : '';
+    const genderText = pGender ? pGender.textContent.trim() : '';
+
+    let sep = container.querySelector('.be-passenger-sep');
+    if (typeText && genderText) {
+      if (!sep) {
+        sep = document.createElement('span');
+        sep.className = 'be-passenger-sep';
+        sep.style.margin = '0 5px';
+        sep.style.color = '#555555';
+        sep.textContent = '/';
+        container.insertBefore(sep, pGender);
+      }
+    } else if (sep) {
+      sep.remove();
+    }
+  });
+}
+
 // ─── Render Preview ─────────────────────────────────────────
 function updatePreview() {
   if (!state.rawHTML) return;
@@ -389,6 +468,7 @@ function updatePreview() {
 
   // Apply customizations & resize after rendering
   setTimeout(() => {
+    normalizePassengerDetailsAndLayout(doc);
     applyAirlineLogoToIframe();
     syncLuuYToIframe();
     resizeIframe();
@@ -665,10 +745,13 @@ function exportPDF() {
     stLogo.src = SIMPLE_TRAVEL_LOGO_BASE64;
   }
 
-  let html = '<!DOCTYPE html>\n' + iDoc.documentElement.outerHTML;
+  normalizePassengerDetailsAndLayout(iDoc);
+
+  let html = '<!DOCTYPE html>
+' + iDoc.documentElement.outerHTML;
 
   // Ensure Simple Travel logo URL is base64
-  html = html.replace(/https?:\/\/l8uim6bskq7o\.cmccdn\.net\/[^"']+/gi, SIMPLE_TRAVEL_LOGO_BASE64);
+  html = html.replace(/https?://l8uim6bskq7o.cmccdn.net/[^"']+/gi, SIMPLE_TRAVEL_LOGO_BASE64);
 
   // Print CSS: A4 with 10mm (1cm) margin on all 4 sides.
   // Uses zoom: 0.905 on the 210mm table so it scales cleanly down to exactly 190mm
@@ -715,6 +798,25 @@ function exportPDF() {
     object-fit: contain !important;
     display: block !important;
     margin: 0 auto !important;
+  }
+  /* Remove dashed line under Terminal and passenger boxes in print */
+  tr[style*="border-top: 1px dashed"],
+  tr[style*="border-top:1px dashed"],
+  tr[style*="border-top: 1px dashed #cacaca"],
+  tr[style*="border-top:1px dashed #cacaca"] {
+    border-top: none !important;
+  }
+  .be-passenger-details {
+    gap: 0 !important;
+  }
+  .be-passenger-details span,
+  .be-passenger-type,
+  .be-passenger-gender,
+  .be-passenger-dob {
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
   }
   * {
     box-shadow: none !important;
@@ -778,6 +880,7 @@ async function captureToCanvas() {
 
   // Clone the ticket table
   const clone = ticketTable.cloneNode(true);
+  normalizePassengerDetailsAndLayout(clone);
   clone.style.margin = '0 auto';
   clone.style.width = '100%';
   clone.style.maxWidth = '790px';
