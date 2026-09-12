@@ -489,62 +489,110 @@ function extractTicketData(doc) {
 
   // 3. Flights
   const flights = [];
-  const fnRows = Array.from(doc.querySelectorAll('.be-flight-number'));
-  const fcRows = Array.from(doc.querySelectorAll('.be-fare-class'));
-  const hbRows = Array.from(doc.querySelectorAll('.be-hand-baggage'));
-  const abRows = Array.from(doc.querySelectorAll('.be-allowance-baggage'));
+  let flightContainers = Array.from(doc.querySelectorAll('table[id^="eTktFlightInfo"]'));
+  if (flightContainers.length === 0) {
+    const fnEls = Array.from(doc.querySelectorAll('.be-flight-number'));
+    flightContainers = fnEls.map(el => el.closest('table')).filter(Boolean);
+  }
 
-  const stTimes = Array.from(doc.querySelectorAll('.be-start-time'));
-  const scCodes = Array.from(doc.querySelectorAll('.be-start-code'));
-  const sdDates = Array.from(doc.querySelectorAll('.be-start-date'));
-  const etTimes = Array.from(doc.querySelectorAll('.be-end-time'));
-  const edDates = Array.from(doc.querySelectorAll('.be-end-date'));
+  if (flightContainers.length > 0) {
+    flightContainers.forEach(tbl => {
+      const fnEl = tbl.querySelector('.be-flight-number');
+      const fn = fnEl && fnEl.children[1] ? fnEl.children[1].textContent.trim() : (fnEl ? fnEl.textContent.trim() : '');
 
-  const count = Math.max(fnRows.length, stTimes.length, 1);
-  for (let i = 0; i < count; i++) {
-    const fn = fnRows[i] && fnRows[i].children[1] ? fnRows[i].children[1].textContent.trim() : '';
-    const fcRaw = fcRows[i] && fcRows[i].children[1] ? fcRows[i].children[1].textContent.trim() : '';
-    let fc = fcRaw;
-    if (fcRaw.includes(' - ')) {
-      fc = fcRaw.split(' - ').slice(1).join(' - ').trim();
-    }
-    if (!fc) fc = fcRaw;
-    const hb = hbRows[i] && hbRows[i].children[1] ? hbRows[i].children[1].textContent.trim() : '';
-    const ab = abRows[i] && abRows[i].children[1] ? abRows[i].children[1].textContent.trim() : '';
+      const fcEl = tbl.querySelector('.be-fare-class');
+      const fcRaw = fcEl && fcEl.children[1] ? fcEl.children[1].textContent.trim() : (fcEl ? fcEl.textContent.trim() : '');
+      let fc = fcRaw;
+      if (fcRaw.includes(' - ')) {
+        fc = fcRaw.split(' - ').slice(1).join(' - ').trim();
+      }
+      if (!fc) fc = fcRaw;
 
-    const dt = stTimes[i] ? stTimes[i].textContent.trim() : '';
-    let from = scCodes[i] ? scCodes[i].textContent.trim() : '';
-    let to = '';
+      const hbEl = tbl.querySelector('.be-hand-baggage');
+      const hb = hbEl && hbEl.children[1] ? hbEl.children[1].textContent.trim() : (hbEl ? hbEl.textContent.trim() : '');
 
-    if (etTimes[i]) {
-      const arrTd = etTimes[i].closest('td');
-      if (arrTd) {
-        const span200 = arrTd.querySelector('span[style*="font-size: 200%"]') || arrTd.querySelector('.be-end-code');
-        if (span200) {
-          to = span200.textContent.trim();
-        } else {
-          const match = arrTd.textContent.match(/\b([A-Z]{3})\b/);
-          if (match) to = match[1];
+      const abEl = tbl.querySelector('.be-allowance-baggage');
+      const ab = abEl && abEl.children[1] ? abEl.children[1].textContent.trim() : (abEl ? abEl.textContent.trim() : '');
+
+      const stTime = tbl.querySelector('.be-start-time');
+      const dt = stTime ? stTime.textContent.trim() : '';
+
+      const scCode = tbl.querySelector('.be-start-code');
+      const from = scCode ? scCode.textContent.trim() : '';
+
+      // Each flight table may have multiple .be-start-date (e.g. scale title and flight details); the last one is the flight departure date
+      const sdDates = Array.from(tbl.querySelectorAll('.be-start-date'));
+      const dd = sdDates.length > 0 ? sdDates[sdDates.length - 1].textContent.trim() : '';
+
+      const etTime = tbl.querySelector('.be-end-time');
+      const at = etTime ? etTime.textContent.trim() : '';
+
+      const edDate = tbl.querySelector('.be-end-date');
+      const ad = edDate ? edDate.textContent.trim() : '';
+
+      let to = '';
+      if (etTime) {
+        const arrTd = etTime.closest('td');
+        if (arrTd) {
+          const span200 = arrTd.querySelector('span[style*="font-size: 200%"]') || arrTd.querySelector('.be-end-code');
+          if (span200) {
+            to = span200.textContent.trim();
+          } else {
+            const match = arrTd.textContent.match(/\b([A-Z]{3})\b/);
+            if (match) to = match[1];
+          }
         }
       }
-    }
 
-    const dd = sdDates[i] ? sdDates[i].textContent.trim() : '';
-    const at = etTimes[i] ? etTimes[i].textContent.trim() : '';
-    const ad = edDates[i] ? edDates[i].textContent.trim() : '';
-
-    flights.push({
-      fn,
-      fc,
-      from,
-      to,
-      dt,
-      dd,
-      at,
-      ad,
-      hb,
-      ab
+      flights.push({
+        fn,
+        fc,
+        from,
+        to,
+        dt,
+        dd,
+        at,
+        ad,
+        hb,
+        ab
+      });
     });
+  } else {
+    // Fallback if no container matched
+    const fnRows = Array.from(doc.querySelectorAll('.be-flight-number'));
+    const fcRows = Array.from(doc.querySelectorAll('.be-fare-class'));
+    const hbRows = Array.from(doc.querySelectorAll('.be-hand-baggage'));
+    const abRows = Array.from(doc.querySelectorAll('.be-allowance-baggage'));
+    const stTimes = Array.from(doc.querySelectorAll('.be-start-time'));
+    const scCodes = Array.from(doc.querySelectorAll('.be-start-code'));
+    const sdDates = Array.from(doc.querySelectorAll('.be-start-date'));
+    const etTimes = Array.from(doc.querySelectorAll('.be-end-time'));
+    const edDates = Array.from(doc.querySelectorAll('.be-end-date'));
+
+    const count = Math.max(fnRows.length, stTimes.length, 1);
+    for (let i = 0; i < count; i++) {
+      const fn = fnRows[i] && fnRows[i].children[1] ? fnRows[i].children[1].textContent.trim() : '';
+      const fcRaw = fcRows[i] && fcRows[i].children[1] ? fcRows[i].children[1].textContent.trim() : '';
+      let fc = fcRaw;
+      if (fcRaw.includes(' - ')) fc = fcRaw.split(' - ').slice(1).join(' - ').trim();
+      if (!fc) fc = fcRaw;
+      const hb = hbRows[i] && hbRows[i].children[1] ? hbRows[i].children[1].textContent.trim() : '';
+      const ab = abRows[i] && abRows[i].children[1] ? abRows[i].children[1].textContent.trim() : '';
+      const dt = stTimes[i] ? stTimes[i].textContent.trim() : '';
+      const from = scCodes[i] ? scCodes[i].textContent.trim() : '';
+      let to = '';
+      if (etTimes[i]) {
+        const arrTd = etTimes[i].closest('td');
+        if (arrTd) {
+          const span200 = arrTd.querySelector('span[style*="font-size: 200%"]') || arrTd.querySelector('.be-end-code');
+          to = span200 ? span200.textContent.trim() : (arrTd.textContent.match(/\b([A-Z]{3})\b/) || [''])[0];
+        }
+      }
+      const dd = sdDates[i] ? sdDates[i].textContent.trim() : '';
+      const at = etTimes[i] ? etTimes[i].textContent.trim() : '';
+      const ad = edDates[i] ? edDates[i].textContent.trim() : '';
+      flights.push({ fn, fc, from, to, dt, dd, at, ad, hb, ab });
+    }
   }
 
   // 4. Passengers
@@ -949,8 +997,38 @@ async function generateShortUrl() {
   }
   if (shortLinkStatus) shortLinkStatus.textContent = 'Đang xử lý...';
 
+  // Helper with timeout
+  const fetchWithTimeout = (url, opts = {}, ms = 4000) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    return fetch(url, { ...opts, credentials: 'omit', signal: controller.signal }).finally(() => clearTimeout(timer));
+  };
+
+  // Provider 1: clck.ru (native Access-Control-Allow-Origin: *)
   try {
-    const isGdRes = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(fullUrl));
+    const clckRes = await fetchWithTimeout('https://clck.ru/--?url=' + encodeURIComponent(fullUrl), {}, 4000);
+    if (clckRes.ok) {
+      const shortUrl = (await clckRes.text()).trim();
+      if (shortUrl.startsWith('http')) {
+        state.shortUrl = shortUrl;
+        if (shortUrlInput) shortUrlInput.value = shortUrl;
+        if (btnGenerateShortUrl) {
+          btnGenerateShortUrl.textContent = '📋 Copy link';
+          btnGenerateShortUrl.disabled = false;
+        }
+        if (shortLinkStatus) shortLinkStatus.textContent = '✓ Thành công';
+        navigator.clipboard.writeText(shortUrl);
+        showToast('⚡ Đã tạo & copy link rút gọn thành công!', 'success');
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('clck.ru error:', err);
+  }
+
+  // Provider 2: is.gd direct
+  try {
+    const isGdRes = await fetchWithTimeout('https://is.gd/create.php?format=json&url=' + encodeURIComponent(fullUrl), {}, 3500);
     if (isGdRes.ok) {
       const data = await isGdRes.json();
       if (data.shorturl) {
@@ -970,8 +1048,9 @@ async function generateShortUrl() {
     console.warn('is.gd error:', err);
   }
 
+  // Provider 3: TinyURL via allorigins proxy
   try {
-    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl)));
+    const res = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl)), {}, 4000);
     if (res.ok) {
       const shortUrl = (await res.text()).trim();
       if (shortUrl.startsWith('http')) {
@@ -988,7 +1067,7 @@ async function generateShortUrl() {
       }
     }
   } catch (err) {
-    console.warn('Fallback shortener error:', err);
+    console.warn('TinyURL proxy error:', err);
   }
 
   if (btnGenerateShortUrl) {
