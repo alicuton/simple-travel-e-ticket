@@ -770,29 +770,40 @@
     document.getElementById('airline-name').textContent = data.airline || 'VIETJET AIR';
     document.getElementById('pnr-code').textContent = data.pnr || 'SAQ68D';
 
+    function extractKg(str) {
+      if (!str) return null;
+      const m = str.match(/(\d+)\s*k/i);
+      return m ? parseInt(m[1], 10) : null;
+    }
+
     // Populate Flights
     const flCont = document.getElementById('flights-container');
     flCont.innerHTML = '';
     (data.flights || []).forEach(f => {
       const flightRouteClean = ((f.depCode || '') + (f.arrCode || '')).replace(/[^A-Z0-9]/gi, '').toUpperCase();
-      const pBagList = [];
+      const fKg = extractKg(f.baggage);
+      const extraBags = [];
       (data.passengers || []).forEach(p => {
         (p.services || []).forEach(s => {
           const isBag = (s.type && s.type.toLowerCase().includes('hành lý')) || (s.name && /bag|\d+\s*kg/i.test(s.name));
           const sRouteClean = (s.route || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
           const routeMatch = sRouteClean ? (sRouteClean === flightRouteClean) : (data.flights.length === 1);
           if (isBag && routeMatch) {
-            pBagList.push(s.name + (data.passengers.length > 1 ? ' (' + p.name.split(' ').pop() + ')' : ''));
+            const sKg = extractKg(s.name);
+            const isDuplicate = fKg !== null && sKg !== null && fKg === sKg;
+            if (!isDuplicate) {
+              extraBags.push(s.name + (data.passengers.length > 1 ? ' (' + p.name.split(' ').pop() + ')' : ''));
+            }
           }
         });
       });
       let baggageHtml = '';
-      if (f.baggage && pBagList.length > 0) {
-        baggageHtml = `<span>🧳 Ký gửi: <strong>${f.baggage} + ${pBagList.join(', ')}</strong></span>`;
+      if (f.baggage && extraBags.length > 0) {
+        baggageHtml = `<span>🧳 Ký gửi: <strong>${f.baggage} + ${extraBags.join(', ')}</strong></span>`;
       } else if (f.baggage) {
         baggageHtml = `<span>🧳 Ký gửi: <strong>${f.baggage}</strong></span>`;
-      } else if (pBagList.length > 0) {
-        baggageHtml = `<span>🧳 Ký gửi: <strong>${pBagList.join(', ')}</strong></span>`;
+      } else if (extraBags.length > 0) {
+        baggageHtml = `<span>🧳 Ký gửi: <strong>${extraBags.join(', ')}</strong></span>`;
       } else {
         baggageHtml = '<span style="color:#94A3B8;">Ký gửi: Không có</span>';
       }
@@ -856,7 +867,26 @@
             </div>
             ${p.ticketNum ? '<div class="passenger-sub"><span>Vé/Receipt:</span><span class="passenger-ticket-no">' + p.ticketNum + '</span></div>' : ''}
             ${(() => {
-              if (!p.services || p.services.length === 0) return '';
+              // Deduplicate baggage that is already included in flight allowance
+              const pServices = (p.services || []).filter(s => {
+                const isBag = (s.type && s.type.toLowerCase().includes('hành lý')) || (s.name && /bag|\d+\s*kg/i.test(s.name));
+                if (!isBag) return true;
+                const sRouteClean = (s.route || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                const sKg = extractKg(s.name);
+                const matchingFlight = (data.flights || []).find(f => {
+                  const fRouteClean = ((f.depCode || '') + (f.arrCode || '')).replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                  return sRouteClean ? (sRouteClean === fRouteClean) : (data.flights.length === 1);
+                });
+                if (matchingFlight) {
+                  const fKg = extractKg(matchingFlight.baggage);
+                  if (fKg !== null && sKg !== null && fKg === sKg) {
+                    return false; // Skip duplicate baggage already presented in flight card
+                  }
+                }
+                return true;
+              });
+
+              if (pServices.length === 0) return '';
               
               function serviceSortWeight(s) {
                 const isSeat = (s.type && s.type.toLowerCase().includes('ngồi')) || /^[0-9]{1,2}[A-Z]$/i.test(s.name);
@@ -868,10 +898,10 @@
                 return 4;
               }
 
-              if (p.services.length <= 1) {
+              if (pServices.length <= 1) {
                 return `
                   <div class="passenger-services">
-                    ${p.services.map(s => {
+                    ${pServices.map(s => {
                       const sType = (s.type || 'Dịch vụ').replace(/[:\s]+$/, '').trim();
                       const sRoute = s.route ? ` <span class="service-route">(${s.route})</span>` : '';
                       return `
@@ -886,7 +916,7 @@
               }
 
               const byRoute = {};
-              p.services.forEach(s => {
+              pServices.forEach(s => {
                 const r = s.route ? s.route.trim() : 'Dịch vụ';
                 if (!byRoute[r]) byRoute[r] = [];
                 byRoute[r].push(s);
