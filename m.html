@@ -855,20 +855,63 @@
               ${tag ? '<span class="passenger-tag">' + tag + '</span>' : ''}
             </div>
             ${p.ticketNum ? '<div class="passenger-sub"><span>Vé/Receipt:</span><span class="passenger-ticket-no">' + p.ticketNum + '</span></div>' : ''}
-            ${p.services && p.services.length > 0 ? `
-              <div class="passenger-services">
-                ${p.services.map(s => {
-                  const sType = (s.type || 'Dịch vụ').replace(/[:\s]+$/, '').trim();
-                  const sRoute = s.route ? ` <span class="service-route">(${s.route})</span>` : '';
-                  return `
-                    <div class="passenger-service-row">
-                      <span>${sType}:</span>
-                      <span class="passenger-service-desc"><strong>${s.name}</strong>${sRoute}</span>
-                    </div>
-                  `;
-                }).join('')}
-              </div>
-            ` : ''}
+            ${(() => {
+              if (!p.services || p.services.length === 0) return '';
+              
+              function serviceSortWeight(s) {
+                const isSeat = (s.type && s.type.toLowerCase().includes('ngồi')) || /^[0-9]{1,2}[A-Z]$/i.test(s.name);
+                if (isSeat) return 1;
+                const isBag = (s.type && s.type.toLowerCase().includes('hành lý')) || /bag|\d+\s*kg/i.test(s.name);
+                if (isBag) return 2;
+                const isMeal = (s.type && s.type.toLowerCase().includes('suất ăn')) || /meal|ăn|cơm/i.test(s.name);
+                if (isMeal) return 3;
+                return 4;
+              }
+
+              if (p.services.length <= 1) {
+                return `
+                  <div class="passenger-services">
+                    ${p.services.map(s => {
+                      const sType = (s.type || 'Dịch vụ').replace(/[:\s]+$/, '').trim();
+                      const sRoute = s.route ? ` <span class="service-route">(${s.route})</span>` : '';
+                      return `
+                        <div class="passenger-service-row">
+                          <span>${sType}:</span>
+                          <span class="passenger-service-desc"><strong>${s.name}</strong>${sRoute}</span>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                `;
+              }
+
+              const byRoute = {};
+              p.services.forEach(s => {
+                const r = s.route ? s.route.trim() : 'Dịch vụ';
+                if (!byRoute[r]) byRoute[r] = [];
+                byRoute[r].push(s);
+              });
+
+              return `
+                <div class="passenger-services">
+                  ${Object.entries(byRoute).map(([route, items]) => {
+                    items.sort((a, b) => serviceSortWeight(a) - serviceSortWeight(b));
+                    const itemsHtml = items.map(s => {
+                      const isSeat = (s.type && s.type.toLowerCase().includes('ngồi')) || /^[0-9]{1,2}[A-Z]$/i.test(s.name);
+                      const prefix = isSeat ? 'Ghế ' : '';
+                      return `<strong>${prefix}${s.name}</strong>`;
+                    }).join(' • ');
+                    const label = route === 'Dịch vụ' ? 'Dịch vụ:' : `${route}:`;
+                    return `
+                      <div class="passenger-service-row">
+                        <span>${label}</span>
+                        <span class="passenger-service-desc">${itemsHtml}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              `;
+            })()}
           </div>
         `;
       });
