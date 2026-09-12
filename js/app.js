@@ -578,18 +578,119 @@ function generateMobileTicketUrl(ticketData) {
   return (origin ? origin + path : 'm.html') + '#' + compressed;
 }
 
-function getQRCodeDataUrl(text, size = 180) {
+function drawStylizedLeafQR(targetCanvas, text, options = {}) {
+  const ctx = targetCanvas.getContext('2d');
+  const size = options.size || targetCanvas.width;
+  const startX = options.x || 0;
+  const startY = options.y || 0;
+  const fgColor = options.fgColor || '#000000';
+  const bgColor = options.bgColor || '#FFFFFF';
+
+  // 1. Generate matrix using QRCode
   const tempDiv = document.createElement('div');
-  new QRCode(tempDiv, {
+  const qr = new QRCode(tempDiv, {
     text: text,
-    width: size,
-    height: size,
     correctLevel: QRCode.CorrectLevel.M
   });
-  const canvas = tempDiv.querySelector('canvas');
-  if (canvas) return canvas.toDataURL('image/png');
-  const img = tempDiv.querySelector('img');
-  return img ? img.src : '';
+  const qrcode = qr._oQRCode;
+  const count = qrcode.getModuleCount();
+  const m = size / count;
+
+  // Helper to draw leaf shape:
+  // diag1: Top-Left & Bottom-Right rounded, Top-Right & Bottom-Left sharp
+  // diag2: Top-Right & Bottom-Left rounded, Top-Left & Bottom-Right sharp
+  function drawLeafShape(x, y, w, h, r, type) {
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      if (type === 'diag1') {
+        ctx.roundRect(x, y, w, h, [r, 0, r, 0]);
+      } else {
+        ctx.roundRect(x, y, w, h, [0, r, 0, r]);
+      }
+    } else {
+      if (type === 'diag1') {
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w, y);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+        ctx.lineTo(x, y + h);
+        ctx.lineTo(x, y + r);
+        ctx.arcTo(x, y, x + r, y, r);
+      } else {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.arcTo(x + w, y, x + w, y + r, r);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.arcTo(x, y + h, x, y + h - r, r);
+      }
+      ctx.closePath();
+    }
+  }
+
+  function drawEye(startCol, startRow, type) {
+    const x = startX + startCol * m;
+    const y = startY + startRow * m;
+    const outerW = 7 * m;
+    const outerR = 3.2 * m;
+
+    // 1. Outer leaf ring
+    ctx.fillStyle = fgColor;
+    drawLeafShape(x, y, outerW, outerW, outerR, type);
+    ctx.fill();
+
+    // 2. Inner hole
+    const holeX = x + m;
+    const holeY = y + m;
+    const holeW = 5 * m;
+    const holeR = 2.2 * m;
+    ctx.fillStyle = bgColor;
+    drawLeafShape(holeX, holeY, holeW, holeW, holeR, type);
+    ctx.fill();
+
+    // 3. Center leaf dot
+    const dotX = x + 2 * m;
+    const dotY = y + 2 * m;
+    const dotW = 3 * m;
+    const dotR = 1.3 * m;
+    ctx.fillStyle = fgColor;
+    drawLeafShape(dotX, dotY, dotW, dotW, dotR, type);
+    ctx.fill();
+  }
+
+  function isInFinder(r, c) {
+    if (r < 8 && c < 8) return true; // Top-Left
+    if (r < 8 && c >= count - 8) return true; // Top-Right
+    if (r >= count - 8 && c < 8) return true; // Bottom-Left
+    return false;
+  }
+
+  // Draw regular data modules
+  ctx.fillStyle = fgColor;
+  for (let r = 0; r < count; r++) {
+    for (let c = 0; c < count; c++) {
+      if (isInFinder(r, c)) continue;
+      if (qrcode.isDark(r, c)) {
+        ctx.fillRect(startX + c * m, startY + r * m, m + 0.35, m + 0.35);
+      }
+    }
+  }
+
+  // Draw 3 Stylized Leaf Eyes
+  drawEye(0, 0, 'diag1'); // Top-Left
+  drawEye(count - 7, 0, 'diag2'); // Top-Right
+  drawEye(0, count - 7, 'diag1'); // Bottom-Left
+}
+
+function getQRCodeDataUrl(text, size = 180) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, size, size);
+  drawStylizedLeafQR(canvas, text, { size: size });
+  return canvas.toDataURL('image/png');
 }
 
 function syncA4QRBadge(root) {
@@ -684,12 +785,16 @@ function openMobileQRModal() {
   mobileUrlInput.value = state.mobileUrl;
 
   qrCodeContainer.innerHTML = '';
-  new QRCode(qrCodeContainer, {
-    text: state.mobileUrl,
-    width: 140,
-    height: 140,
-    correctLevel: QRCode.CorrectLevel.M
-  });
+  const modalCanvas = document.createElement('canvas');
+  modalCanvas.width = 140;
+  modalCanvas.height = 140;
+  modalCanvas.style.display = 'block';
+  modalCanvas.style.margin = '0 auto';
+  const modalCtx = modalCanvas.getContext('2d');
+  modalCtx.fillStyle = '#FFFFFF';
+  modalCtx.fillRect(0, 0, 140, 140);
+  drawStylizedLeafQR(modalCanvas, state.mobileUrl, { size: 140 });
+  qrCodeContainer.appendChild(modalCanvas);
 
   const comp = LZString.compressToEncodedURIComponent(JSON.stringify(ticketData));
   mobilePreviewIframe.src = 'm.html#' + comp;
@@ -722,95 +827,70 @@ function downloadStandaloneQR() {
 
   showToast('⏳ Đang tạo ảnh mã QR Full HD...', '');
 
-  // Generate large high-resolution 680x680 QR code
-  const tempDiv = document.createElement('div');
-  new QRCode(tempDiv, {
-    text: url,
-    width: 680,
-    height: 680,
-    correctLevel: QRCode.CorrectLevel.M
-  });
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = 1080;
+  exportCanvas.height = 1260;
+  const ctx = exportCanvas.getContext('2d');
 
-  setTimeout(() => {
-    const qrCanvas = tempDiv.querySelector('canvas');
-    if (!qrCanvas) {
-      showToast('Chưa tạo được mã QR', 'error');
-      return;
-    }
+  // Background white
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 1080, 1260);
 
-    const exportCanvas = document.createElement('canvas');
-    exportCanvas.width = 1080;
-    exportCanvas.height = 1260;
-    const ctx = exportCanvas.getContext('2d');
+  const renderContents = () => {
+    // 1. Draw Stylized Leaf QR Code in center
+    drawStylizedLeafQR(exportCanvas, url, { x: 200, y: 230, size: 680 });
 
-    // Background white
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 1080, 1260);
+    // 2. PNR Text below QR (bold 52px, centered)
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1010);
 
-    const renderContents = () => {
-      // Subtle separator line
-      ctx.strokeStyle = '#E2E8F0';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(100, 195);
-      ctx.lineTo(980, 195);
-      ctx.stroke();
+    // 3. Footer: Orange background, large text matching PNR size (48px)
+    const footerColor = state.themeColor || BRAND_DEFAULT;
+    ctx.fillStyle = footerColor;
+    ctx.fillRect(0, 1120, 1080, 140);
 
-      // 2. Draw QR Code in center
-      ctx.drawImage(qrCanvas, 200, 230, 680, 680);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Hotline: 0768.188.224', 540, 1206);
 
-      // 3. PNR Text below QR (bold 52px)
-      ctx.fillStyle = '#0F172A';
-      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1010);
+    const link = document.createElement('a');
+    link.download = 'QR_VeMayBay_' + pnr + '.png';
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
+  };
 
-      // 4. Footer: Orange background, large text matching PNR size (50px)
-      const footerColor = state.themeColor || BRAND_DEFAULT;
-      ctx.fillStyle = footerColor;
-      ctx.fillRect(0, 1120, 1080, 140);
+  // Draw Top Header: Logo on the left + "VÉ ĐIỆN TỬ" text on the right (No horizontal divider line)
+  const logoImg = new Image();
+  logoImg.onload = () => {
+    // Draw Logo on left side: enlarged width 230, height 153
+    ctx.drawImage(logoImg, 100, 24, 230, 153);
 
-      ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Hotline: 0768.188.224', 540, 1206);
+    // Draw "VÉ ĐIỆN TỬ" text on right side: no border/label, pure black, 52px bold
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
 
-      const link = document.createElement('a');
-      link.download = 'QR_VeMayBay_' + pnr + '.png';
-      link.href = exportCanvas.toDataURL('image/png');
-      link.click();
-      showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
-    };
+    renderContents();
+  };
+  logoImg.onerror = () => {
+    ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
+    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('SIMPLE TRAVEL', 100, 118);
 
-    // Draw Top Header: Logo on the left + "VÉ ĐIỆN TỬ" text on the right (matching PNR size and color)
-    const logoImg = new Image();
-    logoImg.onload = () => {
-      // Draw Logo on left side: enlarged width 230, height 153
-      ctx.drawImage(logoImg, 100, 24, 230, 153);
+    ctx.fillStyle = '#0F172A';
+    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
 
-      // Draw "VÉ ĐIỆN TỬ" text on right side: no border/label, pure black, 52px bold (matching PNR)
-      ctx.fillStyle = '#0F172A';
-      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
-
-      renderContents();
-    };
-    logoImg.onerror = () => {
-      ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
-      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('SIMPLE TRAVEL', 100, 118);
-
-      ctx.fillStyle = '#0F172A';
-      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'right';
-      ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
-
-      renderContents();
-    };
-    logoImg.src = SIMPLE_TRAVEL_LOGO_BASE64;
-  }, 80);
+    renderContents();
+  };
+  logoImg.src = SIMPLE_TRAVEL_LOGO_BASE64;
 }
 
 async function captureMobileCard(scale = 2.5) {
