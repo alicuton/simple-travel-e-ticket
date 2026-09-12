@@ -561,6 +561,7 @@ function extractTicketData(doc) {
     p: pnr,
     a: airline,
     c: state.themeColor,
+    g: state.useGradient,
     f: flights,
     px: passengers,
     h: '0768.188.224'
@@ -739,37 +740,72 @@ function downloadStandaloneQR() {
 
     const exportCanvas = document.createElement('canvas');
     exportCanvas.width = 1080;
-    exportCanvas.height = 1200;
+    exportCanvas.height = 1260;
     const ctx = exportCanvas.getContext('2d');
 
     // Background white
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, 1080, 1200);
+    ctx.fillRect(0, 0, 1080, 1260);
 
-    // Top brand banner
-    ctx.fillStyle = state.themeColor || '#F5A623';
-    ctx.fillRect(0, 0, 1080, 150);
+    const renderContents = () => {
+      // 1. Subtitle text: E-TICKET
+      ctx.fillStyle = '#475569';
+      ctx.font = '700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('E - T I C K E T', 540, 175);
 
-    // Title
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 44px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('SIMPLE TRAVEL — E-TICKET', 540, 92);
+      // Subtle separator line
+      ctx.strokeStyle = '#F1F5F9';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(120, 205);
+      ctx.lineTo(960, 205);
+      ctx.stroke();
 
-    // Draw QR Code in center
-    ctx.drawImage(qrCanvas, 200, 240, 680, 680);
+      // 2. Draw QR Code in center
+      ctx.drawImage(qrCanvas, 200, 235, 680, 680);
 
-    // PNR Text below QR
-    ctx.fillStyle = '#0f172a';
-    ctx.font = 'bold 46px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1020);
+      // 3. PNR Text below QR (Minimalist)
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 50px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1025);
 
-    const link = document.createElement('a');
-    link.download = 'QR_VeMayBay_' + pnr + '.png';
-    link.href = exportCanvas.toDataURL('image/png');
-    link.click();
-    showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
+      // 4. Footer: Orange background, only phone number
+      const footerColor = state.themeColor || BRAND_DEFAULT;
+      ctx.fillStyle = footerColor;
+      ctx.fillRect(0, 1140, 1080, 120);
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Hotline: 0768.188.224', 540, 1212);
+
+      const link = document.createElement('a');
+      link.download = 'QR_VeMayBay_' + pnr + '.png';
+      link.href = exportCanvas.toDataURL('image/png');
+      link.click();
+      showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
+    };
+
+    // Draw Simple Travel Logo at top
+    const logoImg = new Image();
+    logoImg.onload = () => {
+      // Natural logo aspect ratio ~ 1.5. Render width 195, height 130
+      const lw = 195;
+      const lh = 130;
+      ctx.drawImage(logoImg, 540 - (lw / 2), 22, lw, lh);
+      renderContents();
+    };
+    logoImg.onerror = () => {
+      // Fallback text if logo fails to render
+      ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
+      ctx.font = 'bold 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('SIMPLE TRAVEL', 540, 95);
+      renderContents();
+    };
+    logoImg.src = SIMPLE_TRAVEL_LOGO_BASE64;
   }, 80);
 }
 

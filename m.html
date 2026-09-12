@@ -125,7 +125,7 @@
       background: #FFFFFF;
     }
     .flight-card__header {
-      background: linear-gradient(135deg, var(--sp) 0%, var(--sp-dark) 100%);
+      background: var(--flight-header-bg, var(--sp));
       color: #FFFFFF;
       padding: 8px 14px;
       font-size: 12px;
@@ -136,14 +136,24 @@
       letter-spacing: 0.3px;
     }
     .flight-card__meta {
-      padding: 8px 14px;
+      padding: 9px 14px;
       background: #F8FAFC;
       border-bottom: 1px dashed #E2E8F0;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 5px;
       font-size: 11px;
       color: #475569;
+    }
+    .flight-card__meta .meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .flight-card__meta .baggage-row {
+      padding-top: 4px;
+      border-top: 1px dotted #E2E8F0;
+      color: #334155;
     }
     .flight-card__meta strong {
       color: #0F172A;
@@ -404,6 +414,89 @@
       z-index: 2000;
       display: none;
     }
+    /* Modal Image Preview (Zalo / Mobile Save Guide) */
+    .img-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(8px);
+      z-index: 3000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .img-modal-content {
+      background: #FFFFFF;
+      border-radius: 18px;
+      max-width: 440px;
+      width: 100%;
+      max-height: 92vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: modalFadeIn 0.25s ease-out;
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .img-modal-header {
+      padding: 12px 16px;
+      background: #F8FAFC;
+      border-bottom: 1px solid #E2E8F0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .img-modal-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0F172A;
+    }
+    .img-modal-close {
+      background: none;
+      border: none;
+      font-size: 18px;
+      font-weight: bold;
+      color: #64748B;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+    .img-modal-guide {
+      background: #FFFBEB;
+      border-bottom: 1px solid #FEF3C7;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #92400E;
+      text-align: center;
+      line-height: 1.4;
+    }
+    .img-modal-body {
+      padding: 12px;
+      overflow-y: auto;
+      text-align: center;
+      background: #F1F5F9;
+      flex: 1;
+    }
+    .img-modal-body img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: block;
+      margin: 0 auto;
+    }
+    .img-modal-footer {
+      padding: 10px 14px;
+      background: #FFFFFF;
+      border-top: 1px solid #E2E8F0;
+      display: flex;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
@@ -452,6 +545,30 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
       Sao chép
     </button>
+  </div>
+
+  <!-- Modal Image Preview & Save (for Zalo / Mobile Save to Photos) -->
+  <div id="img-modal-overlay" class="img-modal-overlay">
+    <div class="img-modal-content">
+      <div class="img-modal-header">
+        <span class="img-modal-title">📱 Lưu ảnh vé điện tử</span>
+        <button id="btn-modal-img-close" class="img-modal-close" title="Đóng">✕</button>
+      </div>
+      <div class="img-modal-guide">
+        👆 <strong>Chạm và giữ vào ảnh 1 giây</strong> ➔ Chọn <strong>"Lưu hình ảnh"</strong> (để lưu thẳng vào Thư viện ảnh)
+      </div>
+      <div class="img-modal-body">
+        <img id="img-modal-preview" src="" alt="Vé điện tử Mobile">
+      </div>
+      <div class="img-modal-footer">
+        <a id="btn-modal-img-download" href="#" class="btn-action btn-save-img" style="flex:1;text-decoration:none;font-size:12px;padding:9px 12px;" download>
+          💾 Tải file về máy
+        </a>
+        <button id="btn-modal-img-dismiss" class="btn-action btn-copy-info" style="flex:1;font-size:12px;padding:9px 12px;background:#E2E8F0;color:#334155;">
+          Đóng
+        </button>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast"></div>
@@ -555,6 +672,7 @@
         pnr: d.pnr || d.p || 'TICKET',
         airline: d.airline || d.a || 'VIETJET AIR',
         color: d.color || d.c || '#F5A623',
+        useGradient: d.g !== undefined ? d.g : (d.useGradient !== undefined ? d.useGradient : false),
         hotline: d.hotline || d.h || '0768.188.224',
         flights: (d.flights || d.f || []).map(f => ({
           title: f.title || ((f.depCode || f.from || '') + ' → ' + (f.arrCode || f.to || '')),
@@ -587,7 +705,7 @@
     const rawData = parseTicketData() || SAMPLE_DATA;
     const data = normalizeData(rawData);
 
-    // Apply Theme Color
+    // Apply Theme Color & Header Gradient Sync
     if (data.color) {
       document.documentElement.style.setProperty('--sp', data.color);
       // Darker shade
@@ -597,6 +715,12 @@
       const b = Math.max(0, parseInt(h.slice(4,6),16) - 35);
       const darkHex = '#' + [r,g,b].map(x => x.toString(16).padStart(2,'0')).join('');
       document.documentElement.style.setProperty('--sp-dark', darkHex);
+    }
+
+    if (data.useGradient) {
+      document.documentElement.style.setProperty('--flight-header-bg', 'linear-gradient(135deg, var(--sp) 0%, var(--sp-dark) 100%)');
+    } else {
+      document.documentElement.style.setProperty('--flight-header-bg', 'var(--sp)');
     }
 
     // Populate Brand & PNR
@@ -616,8 +740,14 @@
           <span>${f.flightNum || ''}</span>
         </div>
         <div class="flight-card__meta">
-          <span>Hãng: <strong>${f.carrier || data.airline || ''}</strong></span>
-          <span>Hạng: <strong>${f.ticketClass || 'ECO'}</strong> (${f.carryOn || '07kg'})</span>
+          <div class="meta-row">
+            <span>Hãng: <strong>${f.carrier || data.airline || ''}</strong></span>
+            <span>Hạng: <strong>${f.ticketClass || 'ECO'}</strong></span>
+          </div>
+          <div class="meta-row baggage-row">
+            <span>🧳 Xách tay: <strong>${f.carryOn || '07kg'}</strong></span>
+            ${f.baggage ? `<span>🧳 Ký gửi: <strong>${f.baggage}</strong></span>` : '<span style="color:#94A3B8;">Ký gửi: Không có</span>'}
+          </div>
         </div>
         <div class="flight-route-grid">
           <div class="route-node origin">
@@ -677,7 +807,36 @@
       psCont.appendChild(pCard);
     }
 
-    // Action: Save Image
+    // Modal Image Preview & Save Handling
+    const imgModalOverlay = document.getElementById('img-modal-overlay');
+    const imgModalPreview = document.getElementById('img-modal-preview');
+    const btnModalImgClose = document.getElementById('btn-modal-img-close');
+    const btnModalImgDismiss = document.getElementById('btn-modal-img-dismiss');
+    const btnModalImgDownload = document.getElementById('btn-modal-img-download');
+
+    function openImgModal(dataUrl, filename) {
+      if (!imgModalOverlay) return;
+      imgModalPreview.src = dataUrl;
+      if (btnModalImgDownload) {
+        btnModalImgDownload.href = dataUrl;
+        btnModalImgDownload.download = filename;
+      }
+      imgModalOverlay.style.display = 'flex';
+    }
+
+    function closeImgModal() {
+      if (imgModalOverlay) imgModalOverlay.style.display = 'none';
+    }
+
+    if (btnModalImgClose) btnModalImgClose.addEventListener('click', closeImgModal);
+    if (btnModalImgDismiss) btnModalImgDismiss.addEventListener('click', closeImgModal);
+    if (imgModalOverlay) {
+      imgModalOverlay.addEventListener('click', e => {
+        if (e.target === imgModalOverlay) closeImgModal();
+      });
+    }
+
+    // Action: Save Image (Zalo, Safari, Mobile & Desktop optimized)
     document.getElementById('btn-save-img').addEventListener('click', async () => {
       showToast('⏳ Đang tạo ảnh độ nét cao...');
       try {
@@ -691,9 +850,50 @@
           backgroundColor: '#FFFFFF'
         });
         card.style.width = prevWidth;
+
+        const filename = 'eticket_mobile_' + (data.pnr || 'ticket') + '.png';
+        const dataUrl = canvas.toDataURL('image/png');
+
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || ('ontouchstart' in window);
+        const isZalo = /zalo/i.test(navigator.userAgent);
+
+        // 1. In Zalo In-App Browser: open modal so user can tap & hold 1s to save directly into Camera Roll
+        if (isZalo) {
+          openImgModal(dataUrl, filename);
+          showToast('👆 Chạm và giữ ảnh 1s để lưu');
+          return;
+        }
+
+        // 2. On Mobile (Safari, Chrome): Use Web Share API so it can be saved directly to Photos
+        if (isMobile && navigator.share && navigator.canShare) {
+          try {
+            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
+            const file = new File([blob], filename, { type: 'image/png' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'Vé điện tử ' + (data.pnr || '')
+              });
+              showToast('✅ Đã mở bảng lưu ảnh');
+              return;
+            }
+          } catch (shareErr) {
+            if (shareErr.name === 'AbortError') return; // User cancelled share sheet
+            console.warn('Web Share failed, falling back to modal:', shareErr);
+          }
+        }
+
+        // 3. Fallback for mobile if Web Share is not supported or failed
+        if (isMobile) {
+          openImgModal(dataUrl, filename);
+          showToast('👆 Chạm và giữ ảnh 1s để lưu');
+          return;
+        }
+
+        // 4. Desktop: Direct browser download
         const a = document.createElement('a');
-        a.href = canvas.toDataURL('image/png');
-        a.download = 'eticket_mobile_' + (data.pnr || 'ticket') + '.png';
+        a.href = dataUrl;
+        a.download = filename;
         a.click();
         showToast('✅ Đã tải ảnh vé về máy!');
       } catch (err) {
