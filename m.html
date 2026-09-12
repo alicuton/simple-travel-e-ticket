@@ -830,34 +830,6 @@
       psCont.appendChild(pCard);
     }
 
-    // Modal Image Preview & Save Handling
-    const imgModalOverlay = document.getElementById('img-modal-overlay');
-    const imgModalPreview = document.getElementById('img-modal-preview');
-    const btnModalImgClose = document.getElementById('btn-modal-img-close');
-    const btnModalImgDismiss = document.getElementById('btn-modal-img-dismiss');
-    const btnModalImgDownload = document.getElementById('btn-modal-img-download');
-
-    function openImgModal(dataUrl, filename) {
-      if (!imgModalOverlay) return;
-      imgModalPreview.src = dataUrl;
-      if (btnModalImgDownload) {
-        btnModalImgDownload.href = dataUrl;
-        btnModalImgDownload.download = filename;
-      }
-      imgModalOverlay.style.display = 'flex';
-    }
-
-    function closeImgModal() {
-      if (imgModalOverlay) imgModalOverlay.style.display = 'none';
-    }
-
-    if (btnModalImgClose) btnModalImgClose.addEventListener('click', closeImgModal);
-    if (btnModalImgDismiss) btnModalImgDismiss.addEventListener('click', closeImgModal);
-    if (imgModalOverlay) {
-      imgModalOverlay.addEventListener('click', e => {
-        if (e.target === imgModalOverlay) closeImgModal();
-      });
-    }
 
     // Modal Image Preview & Save Handling
     const imgModalOverlay = document.getElementById('img-modal-overlay');
