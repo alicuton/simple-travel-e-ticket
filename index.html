@@ -20,7 +20,12 @@
         <p class="header__subtitle">Simple Travel</p>
       </div>
     </div>
-    <span class="badge">v3.0</span>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <button class="btn btn--outline btn--sm" id="btn-header-history" style="color:#fff;border-color:rgba(255,255,255,0.35);font-size:12px;padding:4px 10px;" title="Xem các vé đã lưu & mở lại nhanh">
+        📂 Quản lý Booking
+      </button>
+      <span class="badge">v3.6</span>
+    </div>
   </header>
 
   <!-- ===== APP LAYOUT ===== -->
@@ -81,7 +86,7 @@
         </div>
         <div class="toggle-row">
           <label class="toggle-switch">
-            <input type="checkbox" id="gradient-toggle" checked>
+            <input type="checkbox" id="gradient-toggle">
             <span class="toggle-slider"></span>
           </label>
           <span class="toggle-label">Gradient header</span>
@@ -99,10 +104,10 @@
         </div>
         <select class="font-select" id="font-select">
           <option value="">— Giữ font gốc —</option>
-          <option value="Inter">Inter</option>
+          <option value="Inter" selected>Inter</option>
           <option value="Roboto">Roboto</option>
           <option value="Open Sans">Open Sans</option>
-          <option value="Be Vietnam Pro" selected>Be Vietnam Pro</option>
+          <option value="Be Vietnam Pro">Be Vietnam Pro</option>
           <option value="Montserrat">Montserrat</option>
           <option value="Nunito">Nunito</option>
           <option value="Quicksand">Quicksand</option>
@@ -254,6 +259,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
           📱 Vé Mobile &amp; QR
         </button>
+        <button class="btn btn--outline" id="btn-toolbar-history" title="Danh sách các mã đặt chỗ đã lưu">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          📂 Lịch sử
+        </button>
         <span class="toolbar-divider"></span>
         <button class="btn btn--edit" id="btn-toggle-edit">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -264,9 +273,9 @@
         <div class="fontscale-inline">
           <span class="fontscale-inline__label">Cỡ chữ:</span>
           <button class="fontscale-inline__btn" id="fontscale-decrease">−</button>
-          <input type="range" id="fontscale-slider" min="50" max="150" value="100" step="5" class="fontscale-inline__slider">
+          <input type="range" id="fontscale-slider" min="50" max="150" value="90" step="5" class="fontscale-inline__slider">
           <button class="fontscale-inline__btn" id="fontscale-increase">+</button>
-          <span class="fontscale-inline__value" id="fontscale-value">100%</span>
+          <span class="fontscale-inline__value" id="fontscale-value">90%</span>
           <button class="fontscale-inline__reset" id="btn-fontscale-reset">↺</button>
         </div>
       </div>
@@ -389,9 +398,38 @@
     </div>
   </div>
 
+  <!-- ===== MODAL: BOOKING HISTORY ===== -->
+  <div class="modal-backdrop" id="modal-history" style="display:none;">
+    <div class="modal-card" style="max-width: 860px; width: 95%;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span style="font-size: 22px;">📂</span>
+          <div>
+            <h3>Quản lý Booking &amp; Lịch sử vé</h3>
+            <p>Danh sách các mã đặt chỗ đã tạo — Bấm để mở lại vé, lấy link mobile hoặc copy hành trình</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-modal-history-close" title="Đóng">✕</button>
+      </div>
+
+      <div class="modal-body" style="flex-direction: column; gap: 12px; padding: 16px 20px;">
+        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
+          <input type="text" id="history-search-input" placeholder="🔍 Tìm theo Mã đặt chỗ (PNR), Tên khách hoặc Chặng bay..." class="font-select" style="padding: 8px 12px; font-size: 13px; flex: 1;" spellcheck="false">
+          <button class="btn btn--outline btn--sm" id="btn-clear-all-history" style="color: #ef4444; border-color: #fca5a5;">
+            🗑️ Xóa tất cả
+          </button>
+        </div>
+
+        <div id="history-table-container" style="max-height: 440px; overflow-y: auto; border: 1px solid var(--brand-border); border-radius: 8px; background: #fff;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=3.5"></script>
+  <script src="js/app.js?v=3.6"></script>
 </body>
 </html>

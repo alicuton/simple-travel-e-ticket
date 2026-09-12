@@ -987,3 +987,46 @@ input, textarea, select { font-family: inherit; }
     width: 100%;
   }
 }
+
+/* History Table Styles */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.history-table th {
+  background: #f8fafc;
+  color: var(--brand-dark);
+  font-weight: 700;
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--brand-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.history-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
+}
+.history-table tr:hover {
+  background: #f8fafc;
+}
+.history-pnr-badge {
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  display: inline-block;
+  font-family: monospace;
+}
+.history-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+

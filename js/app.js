@@ -80,9 +80,9 @@ const LS_KEY_TEMPLATES = 'st_eticket_luuy_templates_v3';
 const state = {
   rawHTML: null,
   themeColor: BRAND_DEFAULT,
-  useGradient: true,
-  fontScale: 100,
-  fontFamily: 'Be Vietnam Pro',
+  useGradient: false,
+  fontScale: 90,
+  fontFamily: 'Inter',
   editMode: false,
   fileName: '',
   luuYVisible: true,
@@ -156,6 +156,15 @@ const btnCopyMobileImg      = $('btn-copy-mobile-img');
 const btnCopyFlightSummary  = $('btn-copy-flight-summary');
 const a4QRToggle            = $('a4-qr-toggle');
 
+// History Modal DOM
+const btnHeaderHistory      = $('btn-header-history');
+const btnToolbarHistory     = $('btn-toolbar-history');
+const modalHistory          = $('modal-history');
+const btnModalHistoryClose  = $('btn-modal-history-close');
+const historySearchInput    = $('history-search-input');
+const btnClearAllHistory    = $('btn-clear-all-history');
+const historyTableContainer = $('history-table-container');
+
 // Airline panel DOM
 const airlineLogoInput       = $('airline-logo-input');
 const airlineUploadZone      = $('airline-upload-zone');
@@ -204,6 +213,9 @@ function colorizeHTML(html, hex, useGradient) {
   const dark = darkenHex(hex, 35);
   let out = html;
 
+  // Ensure THE SIMPLE MEDIA CO., LTD stays black (#111827)
+  out = out.replace(/(<span[^>]*style="[^"]*color:\s*)#[0-9a-fA-F]{3,6}([^"]*"[^>]*>\s*THE SIMPLE MEDIA CO)/gi, '$1#111827$2');
+
   // Replace primary theme colors
   TICKET_PRIMARIES.forEach(c => {
     out = out.split(c).join(hex);
@@ -224,7 +236,7 @@ table[style*="border: 1px solid"], tr[style*="border: 1px solid"],
 td[style*="border: 1px solid"], td[style*="border:1px solid"] { border-color: var(--sp) !important; }
 td[style*="border-right: 1px dashed"], td[style*="border-right:1px dashed"] { border-right-color: var(--sp) !important; }
 #eTktHeader { background: transparent !important; }
-#eTktHeader p, #eTktHeader span { color: var(--sp) !important; }
+#eTktHeader p, #eTktHeader span { color: #111827 !important; }
 
 /* ─── Remove dashed line under Terminal row ─── */
 tr[style*="border-top: 1px dashed"],
@@ -592,15 +604,19 @@ function syncA4QRBadge(root) {
   const headerTr = pnrTd.closest('tr');
   if (!headerTr) return;
 
-  const cells = headerTr.querySelectorAll('td');
-  const td1 = cells[0];
-  const td2 = cells[1];
+  const allTds = Array.from(headerTr.querySelectorAll('td'));
+  // Locate airline TD (the one that is not pnrTd and not qrTd)
   let qrTd = headerTr.querySelector('#eTktHeaderQR');
+  const airlineTd = allTds.find(td => td !== pnrTd && td !== qrTd);
 
   if (!state.showA4QR) {
     if (qrTd) qrTd.style.display = 'none';
-    if (td1) td1.style.width = '50%';
-    if (td2) td2.style.width = '50%';
+    pnrTd.style.width = '50%';
+    pnrTd.style.borderRight = '1px dashed var(--sp)';
+    if (airlineTd) {
+      airlineTd.style.width = '50%';
+      airlineTd.style.borderRight = 'none';
+    }
     return;
   }
 
@@ -608,28 +624,46 @@ function syncA4QRBadge(root) {
   const data = extractTicketData(iDoc);
   if (!data) return;
   const url = generateMobileTicketUrl(data);
-  const qrDataUrl = getQRCodeDataUrl(url, 120);
-
-  if (td1) td1.style.width = '35%';
-  if (td2) td2.style.width = '35%';
+  const qrDataUrl = getQRCodeDataUrl(url, 160);
 
   if (!qrTd) {
     qrTd = document.createElement('td');
     qrTd.id = 'eTktHeaderQR';
-    qrTd.style.cssText = 'width: 30%; text-align: right; vertical-align: middle; padding: 0;';
     qrTd.innerHTML = 
-      '<div style="display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px 8px; text-align: left;">' +
-        '<img class="a4-header-qr-img" src="' + qrDataUrl + '" style="width: 52px; height: 52px; display: block; border-radius: 3px;" alt="QR Code">' +
-        '<div style="font-size: 10px; line-height: 1.25; color: #475569; max-width: 90px; font-weight: 600;">' +
-          'Quét mã để xem vé online' +
-        '</div>' +
+      '<div style="display: flex; flex-direction: column; align-items: center; justify-content: center;">' +
+        '<img class="a4-header-qr-img" src="' + qrDataUrl + '" style="width: 68px; height: 68px; display: block; margin: 0 auto 3px;" alt="QR Code">' +
+        '<div style="font-size: 9.5px; color: #475569; font-weight: 600; line-height: 1.25; text-align: center;">Quét mã để xem vé online</div>' +
       '</div>';
-    headerTr.appendChild(qrTd);
+    headerTr.insertBefore(qrTd, pnrTd);
   } else {
+    // Ensure it is placed before pnrTd
+    if (qrTd.nextElementSibling !== pnrTd) {
+      headerTr.insertBefore(qrTd, pnrTd);
+    }
     qrTd.style.display = '';
-    qrTd.style.width = '30%';
     const img = qrTd.querySelector('.a4-header-qr-img');
     if (img) img.src = qrDataUrl;
+  }
+
+  // Set 3 equal columns: Col 1 (QR: 33.33%) | Col 2 (PNR: 33.33%) | Col 3 (Airline: 33.33%)
+  qrTd.style.width = '33.33%';
+  qrTd.style.textAlign = 'center';
+  qrTd.style.verticalAlign = 'middle';
+  qrTd.style.padding = '8px 4px';
+  qrTd.style.borderRight = '1px dashed var(--sp)';
+
+  pnrTd.style.width = '33.33%';
+  pnrTd.style.textAlign = 'center';
+  pnrTd.style.verticalAlign = 'middle';
+  pnrTd.style.padding = '8px 4px';
+  pnrTd.style.borderRight = '1px dashed var(--sp)';
+
+  if (airlineTd) {
+    airlineTd.style.width = '33.33%';
+    airlineTd.style.textAlign = 'center';
+    airlineTd.style.verticalAlign = 'middle';
+    airlineTd.style.padding = '8px 4px';
+    airlineTd.style.borderRight = 'none';
   }
 }
 
@@ -644,6 +678,7 @@ function openMobileQRModal() {
   const ticketData = extractTicketData(iDoc);
   state.ticketData = ticketData;
   state.mobileUrl = generateMobileTicketUrl(ticketData);
+  saveTicketToHistory();
 
   mobileUrlInput.value = state.mobileUrl;
 
@@ -677,43 +712,65 @@ function copyMobileUrl() {
 }
 
 function downloadStandaloneQR() {
-  const canvas = qrCodeContainer.querySelector('canvas');
-  if (!canvas) {
-    showToast('Chưa tạo được mã QR', 'error');
+  const pnr = state.ticketData?.p || 'SimpleTravel';
+  const url = state.mobileUrl;
+  if (!url) {
+    showToast('Chưa có dữ liệu để tạo mã QR', 'error');
     return;
   }
 
-  const exportCanvas = document.createElement('canvas');
-  exportCanvas.width = 360;
-  exportCanvas.height = 420;
-  const ctx = exportCanvas.getContext('2d');
+  showToast('⏳ Đang tạo ảnh mã QR Full HD...', '');
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, 360, 420);
+  // Generate large high-resolution 680x680 QR code
+  const tempDiv = document.createElement('div');
+  new QRCode(tempDiv, {
+    text: url,
+    width: 680,
+    height: 680,
+    correctLevel: QRCode.CorrectLevel.M
+  });
 
-  ctx.fillStyle = state.themeColor || '#F5A623';
-  ctx.fillRect(0, 0, 360, 56);
+  setTimeout(() => {
+    const qrCanvas = tempDiv.querySelector('canvas');
+    if (!qrCanvas) {
+      showToast('Chưa tạo được mã QR', 'error');
+      return;
+    }
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 15px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('SIMPLE TRAVEL — E-TICKET', 180, 35);
+    const exportCanvas = document.createElement('canvas');
+    exportCanvas.width = 1080;
+    exportCanvas.height = 1200;
+    const ctx = exportCanvas.getContext('2d');
 
-  ctx.drawImage(canvas, 60, 80, 240, 240);
+    // Background white
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 1080, 1200);
 
-  ctx.fillStyle = '#0f172a';
-  ctx.font = 'bold 16px sans-serif';
-  ctx.fillText('Mã đặt chỗ: ' + (state.ticketData?.p || ''), 180, 350);
+    // Top brand banner
+    ctx.fillStyle = state.themeColor || '#F5A623';
+    ctx.fillRect(0, 0, 1080, 150);
 
-  ctx.fillStyle = '#64748b';
-  ctx.font = '12px sans-serif';
-  ctx.fillText('Quét bằng Camera hoặc Zalo để mở vé', 180, 378);
+    // Title
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 44px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SIMPLE TRAVEL — E-TICKET', 540, 92);
 
-  const link = document.createElement('a');
-  link.download = 'QR_VeMayBay_' + (state.ticketData?.p || 'SimpleTravel') + '.png';
-  link.href = exportCanvas.toDataURL('image/png');
-  link.click();
-  showToast('✅ Đã tải file ảnh mã QR!', 'success');
+    // Draw QR Code in center
+    ctx.drawImage(qrCanvas, 200, 240, 680, 680);
+
+    // PNR Text below QR
+    ctx.fillStyle = '#0f172a';
+    ctx.font = 'bold 46px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1020);
+
+    const link = document.createElement('a');
+    link.download = 'QR_VeMayBay_' + pnr + '.png';
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
+  }, 80);
 }
 
 async function captureMobileCard(scale = 2.5) {
@@ -727,12 +784,24 @@ async function captureMobileCard(scale = 2.5) {
   }
   if (!card) throw new Error('Chưa tải xong vé');
 
-  return await html2canvas(card, {
-    scale: scale,
-    useCORS: true,
-    allowTaint: true,
-    backgroundColor: '#0F172A'
-  });
+  // Enforce standard mobile width (420px) during capture so it is never squished by iframe mockup
+  const prevWidth = card.style.width;
+  const prevMaxWidth = card.style.maxWidth;
+  card.style.width = '420px';
+  card.style.maxWidth = '420px';
+
+  try {
+    return await html2canvas(card, {
+      scale: scale,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#FFFFFF',
+      width: 420
+    });
+  } finally {
+    card.style.width = prevWidth;
+    card.style.maxWidth = prevMaxWidth;
+  }
 }
 
 async function downloadMobileImage() {
@@ -919,6 +988,7 @@ async function loadFile(file) {
     applyColor(state.themeColor);
     showLoading(false);
     showToast('✅ Đã tải file thành công!', 'success');
+    setTimeout(() => saveTicketToHistory(), 600);
   };
   reader.readAsText(file, 'UTF-8');
 }
@@ -1626,7 +1696,7 @@ document.querySelectorAll('.edit-toolbar__btn[data-cmd]').forEach(btn => {
 fontSlider.addEventListener('input', e => setFontScale(+e.target.value));
 btnFontDec.addEventListener('click', () => setFontScale(state.fontScale - 5));
 fontInc.addEventListener('click', () => setFontScale(state.fontScale + 5));
-btnFontReset.addEventListener('click', () => setFontScale(100));
+btnFontReset.addEventListener('click', () => setFontScale(90));
 
 // ─── LƯU Ý Rich Toolbar ─────────────────────────────────────
 document.querySelectorAll('.luu-y-tb-btn[data-cmd]').forEach(btn => {
@@ -1729,6 +1799,263 @@ if (a4QRToggle) {
     resizeIframe();
     showToast(state.showA4QR ? '✅ Đã bật mã QR trên vé A4' : '🙈 Đã tắt mã QR trên vé A4', '');
   });
+}
+
+// ─── Booking Code History Management ─────────────────────────
+const LS_KEY_HISTORY = 'st_eticket_history_v1';
+
+function getTicketHistory() {
+  try {
+    const raw = localStorage.getItem(LS_KEY_HISTORY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn('Failed to load history:', e);
+  }
+  return [];
+}
+
+function saveTicketToHistory() {
+  if (!state.rawHTML) return;
+  const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+  if (!iDoc) return;
+
+  const data = extractTicketData(iDoc);
+  if (!data || !data.p) return;
+
+  const history = getTicketHistory();
+  const pnr = data.p;
+
+  const routesStr = (data.f || []).map(f => {
+    let r = (f.from || '') + ' → ' + (f.to || '');
+    if (f.dd) r += ' (' + f.dd + ')';
+    return r;
+  }).join(' • ');
+
+  const passengersStr = (data.px || []).map(p => p.n).join(', ');
+
+  const record = {
+    pnr: pnr,
+    airline: data.a || state.airlineName || 'VIETJET AIR',
+    routes: routesStr,
+    passengers: passengersStr,
+    mobileUrl: state.mobileUrl || generateMobileTicketUrl(data),
+    themeColor: state.themeColor,
+    fontFamily: state.fontFamily,
+    fontScale: state.fontScale,
+    useGradient: state.useGradient,
+    rawHTML: state.rawHTML,
+    fileName: state.fileName || (pnr + '.html'),
+    updatedAt: new Date().toLocaleString('vi-VN', {
+      hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+    })
+  };
+
+  // Remove duplicate PNR if already exists
+  const existingIdx = history.findIndex(item => item.pnr === pnr);
+  if (existingIdx !== -1) {
+    history.splice(existingIdx, 1);
+  }
+
+  // Prepend to top
+  history.unshift(record);
+
+  // Keep top 50
+  if (history.length > 50) history.pop();
+
+  try {
+    localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
+  } catch (e) {
+    console.warn('LocalStorage save history error:', e);
+  }
+}
+
+function openHistoryModal() {
+  renderHistoryList();
+  modalHistory.style.display = 'flex';
+}
+
+function closeHistoryModal() {
+  modalHistory.style.display = 'none';
+}
+
+function renderHistoryList(query = '') {
+  if (!historyTableContainer) return;
+  const history = getTicketHistory();
+  const q = query.trim().toLowerCase();
+
+  const filtered = q ? history.filter(h => 
+    (h.pnr || '').toLowerCase().includes(q) ||
+    (h.airline || '').toLowerCase().includes(q) ||
+    (h.routes || '').toLowerCase().includes(q) ||
+    (h.passengers || '').toLowerCase().includes(q)
+  ) : history;
+
+  if (filtered.length === 0) {
+    historyTableContainer.innerHTML = 
+      '<div style="text-align: center; padding: 48px 20px; color: var(--brand-muted);">' +
+        '<div style="font-size: 32px; margin-bottom: 8px;">📭</div>' +
+        '<div style="font-weight: 600; font-size: 14px; color: var(--brand-dark);">' +
+          (q ? 'Không tìm thấy kết quả nào phù hợp' : 'Chưa có vé nào được lưu trong lịch sử') +
+        '</div>' +
+        '<p style="font-size: 12px; margin-top: 4px;">Mỗi khi bạn tải vé lên hoặc thao tác, hệ thống sẽ tự động lưu lại tại đây.</p>' +
+      '</div>';
+    return;
+  }
+
+  let html = 
+    '<table class="history-table">' +
+      '<thead>' +
+        '<tr>' +
+          '<th style="width: 15%;">Mã đặt chỗ</th>' +
+          '<th style="width: 18%;">Hãng bay</th>' +
+          '<th style="width: 25%;">Hành trình</th>' +
+          '<th style="width: 20%;">Khách bay</th>' +
+          '<th style="width: 12%;">Thời gian</th>' +
+          '<th style="width: 10%; text-align: center;">Thao tác</th>' +
+        '</tr>' +
+      '</thead>' +
+      '<tbody>';
+
+  filtered.forEach(item => {
+    html += 
+      '<tr>' +
+        '<td><span class="history-pnr-badge">' + item.pnr + '</span></td>' +
+        '<td><strong>' + item.airline + '</strong></td>' +
+        '<td style="font-size: 11.5px; line-height: 1.35; color: #334155;">' + (item.routes || '—') + '</td>' +
+        '<td style="font-size: 11.5px; line-height: 1.35; color: #475569;">' + (item.passengers || '—') + '</td>' +
+        '<td style="font-size: 11px; color: #64748b;">' + item.updatedAt + '</td>' +
+        '<td>' +
+          '<div class="history-actions" style="justify-content: center;">' +
+            '<button class="btn btn--primary btn--sm" data-action="load" data-pnr="' + item.pnr + '" title="Mở lại vé vào trình chỉnh sửa" style="padding: 4px 8px; font-size: 11px;">👁️ Mở</button>' +
+            '<button class="btn btn--outline btn--sm" data-action="copy" data-pnr="' + item.pnr + '" title="Copy tóm tắt chuyến bay gửi Zalo" style="padding: 4px 8px; font-size: 11px;">📋</button>' +
+            (item.mobileUrl ? '<a href="' + item.mobileUrl + '" target="_blank" class="btn btn--outline btn--sm" title="Mở vé Mobile" style="padding: 4px 8px; font-size: 11px; text-decoration: none;">📱</a>' : '') +
+            '<button class="btn btn--outline btn--sm" data-action="delete" data-pnr="' + item.pnr + '" title="Xóa vé này khỏi lịch sử" style="padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #fca5a5;">🗑️</button>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  historyTableContainer.innerHTML = html;
+
+  // Bind row action clicks
+  historyTableContainer.querySelectorAll('button[data-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      const pnr = btn.dataset.pnr;
+      if (action === 'load') {
+        loadTicketFromHistory(pnr);
+      } else if (action === 'copy') {
+        copyFlightSummaryByPnr(pnr);
+      } else if (action === 'delete') {
+        deleteHistoryItem(pnr);
+      }
+    });
+  });
+}
+
+function loadTicketFromHistory(pnr) {
+  const history = getTicketHistory();
+  const item = history.find(h => h.pnr === pnr);
+  if (!item || !item.rawHTML) {
+    showToast('Không tìm thấy nội dung vé', 'error');
+    return;
+  }
+
+  state.rawHTML = item.rawHTML;
+  state.fileName = item.fileName || (pnr + '.html');
+  fileNameEl.textContent = state.fileName;
+  fileSizeEl.textContent = formatBytes(state.rawHTML.length);
+
+  state.themeColor = item.themeColor || BRAND_DEFAULT;
+  state.fontFamily = item.fontFamily || 'Inter';
+  state.fontScale = item.fontScale || 90;
+  state.useGradient = item.useGradient !== undefined ? item.useGradient : false;
+
+  // Sync inputs
+  if (colorPicker) colorPicker.value = state.themeColor;
+  if (colorHex) colorHex.value = state.themeColor;
+  if (fontSelect) fontSelect.value = state.fontFamily;
+  if (fontSlider) fontSlider.value = state.fontScale;
+  if (fontValue) fontValue.textContent = state.fontScale + '%';
+  if (gradientToggle) gradientToggle.checked = state.useGradient;
+
+  // Show UI
+  fileInfo.style.display = 'flex';
+  panelColors.style.display = '';
+  panelFont.style.display = '';
+  panelAirline.style.display = '';
+  panelLuuY.style.display = '';
+  previewEmpty.style.display = 'none';
+  previewToolbar.style.display = 'flex';
+  previewContainer.style.display = 'flex';
+
+  applyColor(state.themeColor);
+  closeHistoryModal();
+  showToast('✅ Đã mở lại vé: ' + pnr, 'success');
+}
+
+function copyFlightSummaryByPnr(pnr) {
+  const history = getTicketHistory();
+  const item = history.find(h => h.pnr === pnr);
+  if (!item) return;
+
+  let txt = '✈️ VÉ ĐIỆN TỬ - SIMPLE TRAVEL\n';
+  txt += 'Mã đặt chỗ: ' + item.pnr + '\n';
+  txt += 'Hãng: ' + item.airline + '\n\n';
+  if (item.routes) {
+    txt += '🛫 Hành trình: ' + item.routes + '\n\n';
+  }
+  if (item.passengers) {
+    txt += 'Khách bay:\n' + item.passengers.split(', ').map((n, i) => (i+1) + '. ' + n).join('\n') + '\n';
+  }
+
+  navigator.clipboard.writeText(txt.trim()).then(() => {
+    showToast('📋 Đã copy tóm tắt vé ' + pnr, 'success');
+  }).catch(() => {
+    showToast('⚠️ Không thể sao chép tự động', 'error');
+  });
+}
+
+function deleteHistoryItem(pnr) {
+  let history = getTicketHistory();
+  history = history.filter(h => h.pnr !== pnr);
+  try {
+    localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
+  } catch (e) {}
+  renderHistoryList(historySearchInput ? historySearchInput.value : '');
+  showToast('🗑️ Đã xóa vé ' + pnr, '');
+}
+
+function clearAllHistory() {
+  if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử vé đã lưu?')) return;
+  try {
+    localStorage.removeItem(LS_KEY_HISTORY);
+  } catch (e) {}
+  renderHistoryList();
+  showToast('🧹 Đã xóa toàn bộ lịch sử vé', '');
+}
+
+// History Modal Listeners
+if (btnHeaderHistory) {
+  btnHeaderHistory.addEventListener('click', openHistoryModal);
+}
+if (btnToolbarHistory) {
+  btnToolbarHistory.addEventListener('click', openHistoryModal);
+}
+if (btnModalHistoryClose) {
+  btnModalHistoryClose.addEventListener('click', closeHistoryModal);
+}
+if (modalHistory) {
+  modalHistory.addEventListener('click', e => {
+    if (e.target === modalHistory) closeHistoryModal();
+  });
+}
+if (historySearchInput) {
+  historySearchInput.addEventListener('input', e => renderHistoryList(e.target.value));
+}
+if (btnClearAllHistory) {
+  btnClearAllHistory.addEventListener('click', clearAllHistory);
 }
 
 // ─── Init ───────────────────────────────────────────────────

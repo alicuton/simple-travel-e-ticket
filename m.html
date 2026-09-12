@@ -434,15 +434,6 @@
       <!-- Passengers Container -->
       <div id="passengers-container"></div>
 
-      <!-- QR Code on card -->
-      <div class="qr-section">
-        <div class="qr-canvas-box" id="card-qr-box"></div>
-        <div class="qr-info">
-          <div class="qr-title">Xác thực vé điện tử</div>
-          <div class="qr-desc">Quét mã bằng Camera hoặc Zalo để mở và kiểm tra vé điện tử trên điện thoại.</div>
-        </div>
-      </div>
-
       <!-- Footer -->
       <div class="ticket-footer">
         <div class="hotline" id="hotline-text">📞 Hotline 24/7: 0768.188.224 • booking@thesimple.media</div>
@@ -686,31 +677,20 @@
       psCont.appendChild(pCard);
     }
 
-    // Populate QR on Card
-    const currentUrl = window.location.href;
-    const qrBox = document.getElementById('card-qr-box');
-    if (typeof QRCode !== 'undefined') {
-      new QRCode(qrBox, {
-        text: currentUrl,
-        width: 68,
-        height: 68,
-        colorDark: '#0F172A',
-        colorLight: '#FFFFFF',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-    }
-
     // Action: Save Image
     document.getElementById('btn-save-img').addEventListener('click', async () => {
       showToast('⏳ Đang tạo ảnh độ nét cao...');
       try {
         const card = document.getElementById('ticket-card') || document.getElementById('ticketCard');
+        const prevWidth = card.style.width;
+        card.style.width = '420px';
         const canvas = await html2canvas(card, {
           scale: 2.5,
           useCORS: true,
           allowTaint: true,
-          backgroundColor: '#0F172A'
+          backgroundColor: '#FFFFFF'
         });
+        card.style.width = prevWidth;
         const a = document.createElement('a');
         a.href = canvas.toDataURL('image/png');
         a.download = 'eticket_mobile_' + (data.pnr || 'ticket') + '.png';
