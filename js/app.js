@@ -154,6 +154,9 @@ const btnCopyMobileUrl      = $('btn-copy-mobile-url');
 const btnDownloadMobileImg  = $('btn-download-mobile-img');
 const btnCopyMobileImg      = $('btn-copy-mobile-img');
 const btnCopyFlightSummary  = $('btn-copy-flight-summary');
+const shortUrlInput         = $('short-url-input');
+const btnGenerateShortUrl   = $('btn-generate-short-url');
+const shortLinkStatus       = $('short-link-status');
 const a4QRToggle            = $('a4-qr-toggle');
 
 // History Modal DOM
@@ -594,12 +597,34 @@ function extractTicketData(doc) {
   };
 }
 
+const AIRLINE_CODE_MAP = {
+  'Vietjet Air': 'VJ',
+  'Vietnam Airlines': 'VN',
+  'Bamboo Airways': 'QH',
+  'Pacific Airlines': 'BL',
+  'Vietravel Airlines': 'VU'
+};
+
+const CLASS_CODE_MAP = {
+  'Deluxe': 'DLX',
+  'ECO': 'ECO',
+  'SkyBoss': 'SB',
+  'Business': 'BUS'
+};
+
 function generateMobileTicketUrl(ticketData) {
   if (!ticketData) return '';
   const p = ticketData.p || '';
-  const a = ticketData.a || '';
+  const a = AIRLINE_CODE_MAP[ticketData.a] || ticketData.a || '';
   const c = ticketData.c && ticketData.c !== '#F5A623' ? ticketData.c : '';
   const g = ticketData.g ? '1' : '';
+
+  function extractKg(str) {
+    if (!str) return null;
+    const m = str.match(/(\d+)\s*k/i);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
   const fls = (ticketData.f || []).map(f => {
     const fn = f.fn || '';
     const from = f.from || '';
@@ -610,18 +635,51 @@ function generateMobileTicketUrl(ticketData) {
     const ad = (f.ad && f.ad !== f.dd) ? f.ad.replace(/^(Thứ [^,]+|Chủ Nhật),\s*/i, '') : '';
     const hb = (f.hb && f.hb !== '07kg' && f.hb !== '7kg') ? f.hb : '';
     const ab = f.ab || '';
-    const fc = f.fc || '';
+    const fc = CLASS_CODE_MAP[f.fc] || f.fc || '';
     return [fn, from, to, dt, dd, at, ad, hb, ab, fc].join(',');
   }).join(';');
-  const pxs = (ticketData.px || []).map(p => {
-    const n = p.n || '';
-    const g = p.g || '';
-    const t = (p.t && p.t !== 'Người lớn' && p.t !== 'Adult') ? p.t : '';
-    const tk = p.tk || '';
-    const srvs = (p.services || []).map(s => [s.type || '', s.name || '', s.route || ''].join('~')).join('^');
+
+  const pxs = (ticketData.px || []).map(pItem => {
+    const n = pItem.n || '';
+    const g = pItem.g || '';
+    const t = (pItem.t && pItem.t !== 'Người lớn' && pItem.t !== 'Adult') ? pItem.t : '';
+    let tk = pItem.tk || '';
+    if (p && tk.startsWith(p + '-')) {
+      tk = tk.slice(p.length + 1);
+    }
+
+    // Filter out duplicate baggage if already included in flight allowance
+    const filteredSrvs = (pItem.services || []).filter(s => {
+      const isBag = (s.type && s.type.toLowerCase().includes('hành lý')) || (s.name && /bag|\d+\s*kg/i.test(s.name));
+      if (!isBag) return true;
+      const sRouteClean = (s.route || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+      const sKg = extractKg(s.name);
+      const matchFl = (ticketData.f || []).find(f => {
+        const fRoute = ((f.from || '') + (f.to || '')).replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        return sRouteClean ? (sRouteClean === fRoute) : (ticketData.f.length === 1);
+      });
+      if (matchFl) {
+        const fKg = extractKg(matchFl.ab);
+        if (fKg !== null && sKg !== null && fKg === sKg) {
+          return false;
+        }
+      }
+      return true;
+    });
+
+    const srvs = filteredSrvs.map(s => {
+      let typeCode = 'o';
+      const tLower = (s.type || '').toLowerCase();
+      if (tLower.includes('ngồi') || tLower.includes('seat')) typeCode = 's';
+      else if (tLower.includes('hành lý') || tLower.includes('bag')) typeCode = 'b';
+      else if (tLower.includes('ăn') || tLower.includes('meal')) typeCode = 'm';
+      return [typeCode, s.name || '', s.route || ''].join('~');
+    }).join('^');
+
     return [n, g, t, tk, srvs].join(',');
   }).join(';');
-  const compact = 'v2:' + [p, a, c, g, fls, pxs].join('|');
+
+  const compact = 'v3:' + [p, a, c, g, fls, pxs].join('|');
 
   const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
   const idx = window.location.pathname.lastIndexOf('/');
@@ -831,7 +889,15 @@ function openMobileQRModal() {
   const ticketData = extractTicketData(iDoc);
   state.ticketData = ticketData;
   state.mobileUrl = generateMobileTicketUrl(ticketData);
+  state.shortUrl = '';
   mobileUrlInput.value = state.mobileUrl;
+
+  if (shortUrlInput) shortUrlInput.value = '';
+  if (btnGenerateShortUrl) {
+    btnGenerateShortUrl.disabled = false;
+    btnGenerateShortUrl.textContent = '⚡ Tạo link ngắn';
+  }
+  if (shortLinkStatus) shortLinkStatus.textContent = '';
 
   qrCodeContainer.innerHTML = '';
   const modalCanvas = document.createElement('canvas');
@@ -864,6 +930,73 @@ function copyMobileUrl() {
     document.execCommand('copy');
     showToast('📋 Đã sao chép link vé trực tuyến!', 'success');
   });
+}
+
+async function generateShortUrl() {
+  const fullUrl = state.mobileUrl;
+  if (!fullUrl) return;
+
+  if (state.shortUrl && shortUrlInput && shortUrlInput.value === state.shortUrl) {
+    navigator.clipboard.writeText(state.shortUrl).then(() => {
+      showToast('📋 Đã copy link rút gọn: ' + state.shortUrl, 'success');
+    });
+    return;
+  }
+
+  if (btnGenerateShortUrl) {
+    btnGenerateShortUrl.disabled = true;
+    btnGenerateShortUrl.textContent = '⏳ Đang tạo...';
+  }
+  if (shortLinkStatus) shortLinkStatus.textContent = 'Đang xử lý...';
+
+  try {
+    const isGdRes = await fetch('https://is.gd/create.php?format=json&url=' + encodeURIComponent(fullUrl));
+    if (isGdRes.ok) {
+      const data = await isGdRes.json();
+      if (data.shorturl) {
+        state.shortUrl = data.shorturl;
+        if (shortUrlInput) shortUrlInput.value = data.shorturl;
+        if (btnGenerateShortUrl) {
+          btnGenerateShortUrl.textContent = '📋 Copy link';
+          btnGenerateShortUrl.disabled = false;
+        }
+        if (shortLinkStatus) shortLinkStatus.textContent = '✓ Thành công';
+        navigator.clipboard.writeText(data.shorturl);
+        showToast('⚡ Đã tạo & copy link rút gọn thành công!', 'success');
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('is.gd error:', err);
+  }
+
+  try {
+    const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl)));
+    if (res.ok) {
+      const shortUrl = (await res.text()).trim();
+      if (shortUrl.startsWith('http')) {
+        state.shortUrl = shortUrl;
+        if (shortUrlInput) shortUrlInput.value = shortUrl;
+        if (btnGenerateShortUrl) {
+          btnGenerateShortUrl.textContent = '📋 Copy link';
+          btnGenerateShortUrl.disabled = false;
+        }
+        if (shortLinkStatus) shortLinkStatus.textContent = '✓ Thành công';
+        navigator.clipboard.writeText(shortUrl);
+        showToast('⚡ Đã tạo & copy link rút gọn thành công!', 'success');
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('Fallback shortener error:', err);
+  }
+
+  if (btnGenerateShortUrl) {
+    btnGenerateShortUrl.disabled = false;
+    btnGenerateShortUrl.textContent = '⚡ Thử lại';
+  }
+  if (shortLinkStatus) shortLinkStatus.textContent = 'Lỗi kết nối';
+  showToast('⚠️ Không thể kết nối dịch vụ rút gọn link, vui lòng dùng link gốc', 'error');
 }
 
 function downloadStandaloneQR() {
@@ -1036,6 +1169,11 @@ function copyFlightSummary() {
     const tag = (p.t || '') + (p.t && p.g ? ' / ' : '') + (p.g || '');
     txt += (idx + 1) + '. ' + p.n + (tag ? ' (' + tag + ')' : '') + '\n';
   });
+
+  const linkToShare = state.shortUrl || state.mobileUrl;
+  if (linkToShare) {
+    txt += '\n📱 Xem vé online: ' + linkToShare + '\n';
+  }
 
   navigator.clipboard.writeText(txt.trim()).then(() => {
     showToast('📋 Đã sao chép tóm tắt hành trình gửi khách!', 'success');
@@ -1946,6 +2084,9 @@ if (modalMobileQR) {
 }
 if (btnCopyMobileUrl) {
   btnCopyMobileUrl.addEventListener('click', copyMobileUrl);
+}
+if (btnGenerateShortUrl) {
+  btnGenerateShortUrl.addEventListener('click', generateShortUrl);
 }
 if (btnDownloadQR) {
   btnDownloadQR.addEventListener('click', downloadStandaloneQR);

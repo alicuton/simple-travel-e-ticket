@@ -570,19 +570,36 @@
         }
         if (!hash) return null;
 
-        // 1. Compact format (v2:PNR|Airline|Color|Gradient|Flights|Passengers)
-        if (hash.startsWith('v2:')) {
+        // 1. Compact format (v3 or v2: PNR|Airline|Color|Gradient|Flights|Passengers)
+        if (hash.startsWith('v3:') || hash.startsWith('v2:')) {
           const raw = decodeURIComponent(hash.slice(3));
           const parts = raw.split('|');
           const pnr = parts[0] || '';
-          const airline = parts[1] || 'VIETJET AIR';
+
+          const REV_AIRLINE_MAP = {
+            'VJ': 'Vietjet Air',
+            'VN': 'Vietnam Airlines',
+            'QH': 'Bamboo Airways',
+            'BL': 'Pacific Airlines',
+            'VU': 'Vietravel Airlines'
+          };
+          const airline = REV_AIRLINE_MAP[parts[1]] || parts[1] || 'VIETJET AIR';
           const color = parts[2] || '#F5A623';
           const useGradient = parts[3] === '1';
           const flightsStr = parts[4] || '';
           const passengersStr = parts[5] || '';
 
+          const REV_CLASS_MAP = {
+            'DLX': 'Deluxe',
+            'ECO': 'ECO',
+            'SB': 'SkyBoss',
+            'BUS': 'Business'
+          };
+
           const flights = flightsStr ? flightsStr.split(';').map(fStr => {
             const f = fStr.split(',');
+            const rawClass = f[9] || 'ECO';
+            const ticketClass = REV_CLASS_MAP[rawClass] || rawClass;
             return {
               flightNum: f[0] || '',
               depCode: f[1] || '',
@@ -593,17 +610,28 @@
               arrDate: formatVNDate(f[6] || f[4] || ''),
               carryOn: f[7] || '07kg',
               baggage: f[8] || '',
-              ticketClass: f[9] || 'ECO'
+              ticketClass: ticketClass
             };
           }) : [];
 
           const passengers = passengersStr ? passengersStr.split(';').map(pStr => {
             const p = pStr.split(',');
+            let tk = p[3] || '';
+            if (tk && !tk.includes(pnr) && /^\d+-\d+$/.test(tk)) {
+              tk = pnr + '-' + tk;
+            }
             const srvStr = p[4] || '';
             const services = srvStr ? srvStr.split('^').map(sItem => {
               const sParts = sItem.split('~');
+              let type = 'Dịch vụ khác';
+              const tc = sParts[0];
+              if (tc === 's') type = 'Chỗ ngồi';
+              else if (tc === 'b') type = 'Hành lý';
+              else if (tc === 'm') type = 'Suất ăn';
+              else if (tc && tc.length > 1) type = tc.replace(/[:\s]+$/, '').trim();
+
               return {
-                type: (sParts[0] || 'Dịch vụ').replace(/[:\s]+$/, '').trim(),
+                type: type,
                 name: (sParts[1] || '').trim(),
                 route: (sParts[2] || '').trim()
               };
@@ -613,7 +641,7 @@
               name: p[0] || '',
               gender: p[1] || '',
               type: p[2] || 'Người lớn',
-              ticketNum: p[3] || '',
+              ticketNum: tk,
               services: services
             };
           }) : [];
