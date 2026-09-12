@@ -481,8 +481,6 @@
       text-align: center;
       background: #F1F5F9;
       flex: 1;
-      user-select: none;
-      -webkit-user-select: none;
     }
     .img-modal-body img {
       max-width: 100%;
@@ -492,8 +490,8 @@
       display: block;
       margin: 0 auto;
       -webkit-touch-callout: default !important;
-      user-select: none;
-      -webkit-user-select: none;
+      pointer-events: auto !important;
+      cursor: pointer;
     }
     .img-modal-footer {
       padding: 10px 14px;
@@ -576,19 +574,19 @@
       </div>
 
       <div id="standard-modal-guide" class="img-modal-guide" style="display:none;">
-        👆 <strong>Chạm và giữ vào ảnh 1 giây</strong> ➔ Chọn <strong>"Lưu hình ảnh"</strong>
+        👆 <strong>Chạm và giữ vào ảnh 1-2 giây</strong> ➔ Chọn <strong>"Lưu hình ảnh"</strong>
       </div>
 
       <div class="img-modal-body">
-        <img id="img-modal-preview" src="" alt="Vé điện tử Mobile">
+        <img id="img-modal-preview" src="" alt="Vé điện tử Mobile" title="Chạm giữ để lưu ảnh">
       </div>
 
       <div class="img-modal-footer">
-        <button id="btn-modal-copy-img" class="btn-action btn-save-img" style="flex:1;font-size:12px;padding:10px 12px;">
-          📋 Copy ảnh vé
+        <button id="btn-modal-open-img" class="btn-action btn-save-img" style="flex:1;font-size:12.5px;padding:11px 12px;">
+          💾 Xem/Tải ảnh nét cao
         </button>
-        <button id="btn-modal-copy-link" class="btn-action btn-copy-info" style="flex:1;font-size:12px;padding:10px 12px;background:#E2E8F0;color:#334155;">
-          🔗 Copy link vé
+        <button id="btn-modal-copy-link" class="btn-action btn-copy-info" style="flex:1;font-size:12.5px;padding:11px 12px;background:#E2E8F0;color:#334155;">
+          🔗 Copy link mở Safari
         </button>
       </div>
     </div>
@@ -606,6 +604,23 @@
       setTimeout(() => { t.style.display = 'none'; }, 2500);
     }
 
+    function formatVNDate(dStr) {
+      if (!dStr) return '';
+      if (dStr.includes('Thứ') || dStr.includes('Chủ Nhật')) return dStr;
+      const parts = dStr.split(/[\/\-]/);
+      if (parts.length === 3) {
+        const d = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const y = parseInt(parts[2], 10);
+        const dt = new Date(y, m, d);
+        if (!isNaN(dt.getTime())) {
+          const days = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+          return days[dt.getDay()] + ', ' + dStr;
+        }
+      }
+      return dStr;
+    }
+
     // Parse Data from URL Hash
     function parseTicketData() {
       try {
@@ -614,10 +629,63 @@
           const params = new URLSearchParams(window.location.search);
           hash = params.get('d') || '';
         }
-        if (hash && typeof LZString !== 'undefined') {
+        if (!hash) return null;
+
+        // 1. Compact format (v2:PNR|Airline|Color|Gradient|Flights|Passengers)
+        if (hash.startsWith('v2:')) {
+          const raw = decodeURIComponent(hash.slice(3));
+          const parts = raw.split('|');
+          const pnr = parts[0] || '';
+          const airline = parts[1] || 'VIETJET AIR';
+          const color = parts[2] || '#F5A623';
+          const useGradient = parts[3] === '1';
+          const flightsStr = parts[4] || '';
+          const passengersStr = parts[5] || '';
+
+          const flights = flightsStr ? flightsStr.split(';').map(fStr => {
+            const f = fStr.split(',');
+            return {
+              flightNum: f[0] || '',
+              depCode: f[1] || '',
+              arrCode: f[2] || '',
+              depTime: f[3] || '',
+              depDate: formatVNDate(f[4] || ''),
+              arrTime: f[5] || '',
+              arrDate: formatVNDate(f[6] || f[4] || ''),
+              carryOn: f[7] || '07kg',
+              baggage: f[8] || ''
+            };
+          }) : [];
+
+          const passengers = passengersStr ? passengersStr.split(';').map(pStr => {
+            const p = pStr.split(',');
+            return {
+              name: p[0] || '',
+              gender: p[1] || '',
+              type: p[2] || 'Người lớn',
+              ticketNum: p[3] || '',
+              services: []
+            };
+          }) : [];
+
+          return {
+            pnr,
+            airline,
+            color,
+            useGradient,
+            flights,
+            passengers
+          };
+        }
+
+        // 2. Fallback: LZString decompression
+        if (typeof LZString !== 'undefined') {
           const decomp = LZString.decompressFromEncodedURIComponent(hash);
           if (decomp) return JSON.parse(decomp);
         }
+
+        // 3. Fallback: Direct JSON
+        return JSON.parse(decodeURIComponent(hash));
       } catch (e) {
         console.warn('Decode hash failed:', e);
       }
@@ -837,13 +905,15 @@
     const btnModalImgClose = document.getElementById('btn-modal-img-close');
     const zaloGuideBox = document.getElementById('zalo-guide-box');
     const standardModalGuide = document.getElementById('standard-modal-guide');
-    const btnModalCopyImg = document.getElementById('btn-modal-copy-img');
+    const btnModalOpenImg = document.getElementById('btn-modal-open-img');
     const btnModalCopyLink = document.getElementById('btn-modal-copy-link');
 
     let currentCardCanvas = null;
+    let currentCardDataUrl = '';
 
     function openImgModal(dataUrl, isZaloUser) {
       if (!imgModalOverlay) return;
+      currentCardDataUrl = dataUrl;
       imgModalPreview.src = dataUrl;
       if (zaloGuideBox) zaloGuideBox.style.display = isZaloUser ? 'block' : 'none';
       if (standardModalGuide) standardModalGuide.style.display = isZaloUser ? 'none' : 'block';
@@ -864,31 +934,29 @@
     if (btnModalCopyLink) {
       btnModalCopyLink.addEventListener('click', () => {
         navigator.clipboard.writeText(window.location.href).then(() => {
-          showToast('🔗 Đã copy link vé! Mở Safari và dán vào.');
+          showToast('🔗 Đã copy link vé! Mở Safari để lưu vào Album.');
         }).catch(() => {
           showToast('⚠️ Không thể sao chép link');
         });
       });
     }
 
-    if (btnModalCopyImg) {
-      btnModalCopyImg.addEventListener('click', async () => {
-        try {
-          if (!currentCardCanvas) {
-            const card = document.getElementById('ticket-card') || document.getElementById('ticketCard');
-            currentCardCanvas = await html2canvas(card, { scale: 2.5, useCORS: true, allowTaint: true, backgroundColor: '#FFFFFF' });
-          }
-          const blob = await new Promise(r => currentCardCanvas.toBlob(r, 'image/png'));
-          if (navigator.clipboard && navigator.clipboard.write) {
-            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-            showToast('📋 Đã copy ảnh! Bạn có thể dán vào chat Zalo.');
-          } else {
-            showToast('⚠️ Thiết bị chưa hỗ trợ copy ảnh tự động');
-          }
-        } catch(err) {
-          console.warn('Copy img error:', err);
-          showToast('⚠️ Không thể sao chép ảnh tự động');
+    if (btnModalOpenImg) {
+      btnModalOpenImg.addEventListener('click', () => {
+        if (!currentCardDataUrl) return;
+        // Open image directly in new tab or navigate so Zalo / mobile browser allows tap-and-hold save
+        const win = window.open('');
+        if (win) {
+          win.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Vé Điện Tử - Simple Travel</title></head><body style="margin:0;background:#0F172A;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:12px;box-sizing:border-box;"><div style="color:#F8FAFC;font-size:13px;font-family:sans-serif;margin-bottom:12px;text-align:center;">👆 <strong>Chạm và giữ vào ảnh 1-2 giây</strong> để Lưu vào Thư viện ảnh</div><img src="' + currentCardDataUrl + '" style="max-width:100%;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6);display:block;margin:0 auto;" /></body></html>');
+        } else {
+          window.location.href = currentCardDataUrl;
         }
+      });
+    }
+
+    if (imgModalPreview) {
+      imgModalPreview.addEventListener('click', () => {
+        if (btnModalOpenImg) btnModalOpenImg.click();
       });
     }
 

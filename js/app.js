@@ -570,12 +570,35 @@ function extractTicketData(doc) {
 
 function generateMobileTicketUrl(ticketData) {
   if (!ticketData) return '';
-  const jsonStr = JSON.stringify(ticketData);
-  const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+  const p = ticketData.p || '';
+  const a = ticketData.a || '';
+  const c = ticketData.c && ticketData.c !== '#F5A623' ? ticketData.c : '';
+  const g = ticketData.g ? '1' : '';
+  const fls = (ticketData.f || []).map(f => {
+    const fn = f.fn || '';
+    const from = f.from || '';
+    const to = f.to || '';
+    const dt = f.dt || '';
+    const dd = (f.dd || '').replace(/^(Thứ [^,]+|Chủ Nhật),\s*/i, '');
+    const at = f.at || '';
+    const ad = (f.ad && f.ad !== f.dd) ? f.ad.replace(/^(Thứ [^,]+|Chủ Nhật),\s*/i, '') : '';
+    const hb = (f.hb && f.hb !== '07kg' && f.hb !== '7kg') ? f.hb : '';
+    const ab = f.ab || '';
+    return [fn, from, to, dt, dd, at, ad, hb, ab].join(',');
+  }).join(';');
+  const pxs = (ticketData.px || []).map(p => {
+    const n = p.n || '';
+    const g = p.g || '';
+    const t = (p.t && p.t !== 'Người lớn' && p.t !== 'Adult') ? p.t : '';
+    const tk = p.tk || '';
+    return [n, g, t, tk].join(',');
+  }).join(';');
+  const compact = 'v2:' + [p, a, c, g, fls, pxs].join('|');
+
   const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
   const idx = window.location.pathname.lastIndexOf('/');
   const path = (idx !== -1 ? window.location.pathname.slice(0, idx) : '') + '/m.html';
-  return (origin ? origin + path : 'm.html') + '#' + compressed;
+  return (origin ? origin + path : 'm.html') + '#' + encodeURI(compact);
 }
 
 function drawStylizedLeafQR(targetCanvas, text, options = {}) {
@@ -586,11 +609,11 @@ function drawStylizedLeafQR(targetCanvas, text, options = {}) {
   const fgColor = options.fgColor || '#000000';
   const bgColor = options.bgColor || '#FFFFFF';
 
-  // 1. Generate matrix using QRCode
+  // 1. Generate matrix using QRCode with Level L for chunky, spacious dots
   const tempDiv = document.createElement('div');
   const qr = new QRCode(tempDiv, {
     text: text,
-    correctLevel: QRCode.CorrectLevel.M
+    correctLevel: QRCode.CorrectLevel.L
   });
   const qrcode = qr._oQRCode;
   const count = qrcode.getModuleCount();
