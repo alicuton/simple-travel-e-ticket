@@ -552,25 +552,43 @@
     </button>
   </div>
 
-  <!-- Modal Image Preview & Save (for Zalo / Mobile Save to Photos) -->
+  <!-- Modal Image Preview & Save (with Zalo Guide & Copy Actions) -->
   <div id="img-modal-overlay" class="img-modal-overlay">
     <div class="img-modal-content">
       <div class="img-modal-header">
-        <span class="img-modal-title">📱 Lưu ảnh vé điện tử</span>
+        <span class="img-modal-title" id="img-modal-title">📱 Lưu ảnh vé điện tử</span>
         <button id="btn-modal-img-close" class="img-modal-close" title="Đóng">✕</button>
       </div>
-      <div class="img-modal-guide">
-        👆 <strong>Chạm và giữ vào ảnh 1 giây</strong> ➔ Chọn <strong>"Lưu hình ảnh"</strong> (để lưu thẳng vào Thư viện ảnh)
+
+      <!-- Zalo specific guide box -->
+      <div id="zalo-guide-box" style="display:none;padding:14px 16px;background:#FFFBEB;border-bottom:1px solid #FEF3C7;text-align:left;">
+        <div style="font-weight:700;color:#92400E;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+          <span>ℹ️</span> Đang mở trong Zalo
+        </div>
+        <p style="font-size:12px;color:#78350F;line-height:1.45;margin-bottom:10px;">
+          Trình duyệt Zalo hạn chế tải ảnh trực tiếp về máy. Để lưu ảnh vé vào Thư viện ảnh:
+        </p>
+        <div style="background:#FFFFFF;border:1px solid #FCD34D;border-radius:10px;padding:10px 12px;font-size:12px;color:#1E293B;line-height:1.5;">
+          <strong>Bước 1:</strong> Bấm nút <strong>[ ••• ]</strong> ở góc trên bên phải màn hình Zalo.<br>
+          <strong>Bước 2:</strong> Chọn <strong>"Mở bằng trình duyệt"</strong> (Safari / Chrome).<br>
+          👉 Trên Safari, nút <strong>Lưu ảnh</strong> sẽ lưu thẳng vào <strong>Album ảnh</strong>!
+        </div>
       </div>
+
+      <div id="standard-modal-guide" class="img-modal-guide" style="display:none;">
+        👆 <strong>Chạm và giữ vào ảnh 1 giây</strong> ➔ Chọn <strong>"Lưu hình ảnh"</strong>
+      </div>
+
       <div class="img-modal-body">
         <img id="img-modal-preview" src="" alt="Vé điện tử Mobile">
       </div>
+
       <div class="img-modal-footer">
-        <a id="btn-modal-img-download" href="#" class="btn-action btn-save-img" style="flex:1;text-decoration:none;font-size:12px;padding:9px 12px;" download>
-          💾 Tải file về máy
-        </a>
-        <button id="btn-modal-img-dismiss" class="btn-action btn-copy-info" style="flex:1;font-size:12px;padding:9px 12px;background:#E2E8F0;color:#334155;">
-          Đóng
+        <button id="btn-modal-copy-img" class="btn-action btn-save-img" style="flex:1;font-size:12px;padding:10px 12px;">
+          📋 Copy ảnh vé
+        </button>
+        <button id="btn-modal-copy-link" class="btn-action btn-copy-info" style="flex:1;font-size:12px;padding:10px 12px;background:#E2E8F0;color:#334155;">
+          🔗 Copy link vé
         </button>
       </div>
     </div>
@@ -841,6 +859,67 @@
       });
     }
 
+    // Modal Image Preview & Save Handling
+    const imgModalOverlay = document.getElementById('img-modal-overlay');
+    const imgModalPreview = document.getElementById('img-modal-preview');
+    const btnModalImgClose = document.getElementById('btn-modal-img-close');
+    const zaloGuideBox = document.getElementById('zalo-guide-box');
+    const standardModalGuide = document.getElementById('standard-modal-guide');
+    const btnModalCopyImg = document.getElementById('btn-modal-copy-img');
+    const btnModalCopyLink = document.getElementById('btn-modal-copy-link');
+
+    let currentCardCanvas = null;
+
+    function openImgModal(dataUrl, isZaloUser) {
+      if (!imgModalOverlay) return;
+      imgModalPreview.src = dataUrl;
+      if (zaloGuideBox) zaloGuideBox.style.display = isZaloUser ? 'block' : 'none';
+      if (standardModalGuide) standardModalGuide.style.display = isZaloUser ? 'none' : 'block';
+      imgModalOverlay.style.display = 'flex';
+    }
+
+    function closeImgModal() {
+      if (imgModalOverlay) imgModalOverlay.style.display = 'none';
+    }
+
+    if (btnModalImgClose) btnModalImgClose.addEventListener('click', closeImgModal);
+    if (imgModalOverlay) {
+      imgModalOverlay.addEventListener('click', e => {
+        if (e.target === imgModalOverlay) closeImgModal();
+      });
+    }
+
+    if (btnModalCopyLink) {
+      btnModalCopyLink.addEventListener('click', () => {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+          showToast('🔗 Đã copy link vé! Mở Safari và dán vào.');
+        }).catch(() => {
+          showToast('⚠️ Không thể sao chép link');
+        });
+      });
+    }
+
+    if (btnModalCopyImg) {
+      btnModalCopyImg.addEventListener('click', async () => {
+        try {
+          if (!currentCardCanvas) {
+            const card = document.getElementById('ticket-card') || document.getElementById('ticketCard');
+            currentCardCanvas = await html2canvas(card, { scale: 2.5, useCORS: true, allowTaint: true, backgroundColor: '#FFFFFF' });
+          }
+          const blob = await new Promise(r => currentCardCanvas.toBlob(r, 'image/png'));
+          if (navigator.clipboard && navigator.clipboard.write) {
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            showToast('📋 Đã copy ảnh! Bạn có thể dán vào chat Zalo.');
+          } else {
+            showToast('⚠️ Thiết bị chưa hỗ trợ copy ảnh tự động');
+          }
+        } catch(err) {
+          console.warn('Copy img error:', err);
+          showToast('⚠️ Không thể sao chép ảnh tự động');
+        }
+      });
+    }
+
     // Action: Save Image (Zalo, Safari, Mobile & Desktop optimized)
     document.getElementById('btn-save-img').addEventListener('click', async () => {
       showToast('⏳ Đang tạo ảnh độ nét cao...');
@@ -855,6 +934,7 @@
           backgroundColor: '#FFFFFF'
         });
         card.style.width = prevWidth;
+        currentCardCanvas = canvas;
 
         const filename = 'eticket_mobile_' + (data.pnr || 'ticket') + '.png';
         const dataUrl = canvas.toDataURL('image/png');
@@ -862,49 +942,35 @@
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || ('ontouchstart' in window);
         const isZalo = /zalo/i.test(navigator.userAgent);
 
-        // 1. Try Web Share API with File first (Works natively on iOS Safari, Android, and WebViews supporting Share)
-        if (isMobile && navigator.share) {
+        // 1. In Zalo In-App Browser:
+        // Do NOT call navigator.share or anchor download because Zalo triggers "Process / No application found" error!
+        if (isZalo) {
+          openImgModal(dataUrl, true);
+          return;
+        }
+
+        // 2. On standard Mobile (Safari, Chrome): Use Web Share API so it can be saved directly to Photos
+        if (isMobile && navigator.share && navigator.canShare) {
           try {
             const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
             const file = new File([blob], filename, { type: 'image/png' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            if (navigator.canShare({ files: [file] })) {
               await navigator.share({
                 files: [file],
                 title: 'Vé điện tử ' + (data.pnr || '')
               });
-              showToast('✅ Đã mở bảng chia sẻ/lưu ảnh');
-              return;
-            } else {
-              // Try share with URL/title if file sharing isn't permitted
-              await navigator.share({
-                title: 'Vé điện tử ' + (data.pnr || ''),
-                url: window.location.href
-              });
+              showToast('✅ Đã mở bảng lưu ảnh');
               return;
             }
           } catch (shareErr) {
             if (shareErr.name === 'AbortError') return; // User cancelled share sheet
-            console.warn('navigator.share failed, trying direct save/modal fallback:', shareErr);
+            console.warn('Web Share failed:', shareErr);
           }
         }
 
-        // 2. Try direct download anchor (some WebViews allow direct blob download)
-        try {
-          const a = document.createElement('a');
-          a.href = dataUrl;
-          a.download = filename;
-          a.target = '_blank';
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        } catch(dlErr) {
-          console.warn('Anchor download failed:', dlErr);
-        }
-
-        // 3. Fallback on mobile: open modal view with text selection disabled so iOS/Android won't trigger Live Text / Select Text
+        // 3. Fallback on mobile: open modal view
         if (isMobile) {
-          openImgModal(dataUrl, filename);
-          showToast('👆 Chạm và giữ ảnh để Lưu vào máy');
+          openImgModal(dataUrl, false);
           return;
         }
 

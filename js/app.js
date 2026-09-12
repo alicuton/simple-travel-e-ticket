@@ -782,36 +782,17 @@ function downloadStandaloneQR() {
       showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
     };
 
-    // Draw Top Header: Logo on the left + "VÉ ĐIỆN TỬ" text on the right (like the mobile ticket header)
+    // Draw Top Header: Logo on the left + "VÉ ĐIỆN TỬ" text on the right (matching PNR size and color)
     const logoImg = new Image();
     logoImg.onload = () => {
-      // Draw Logo on left side: width 195, height 130
-      ctx.drawImage(logoImg, 100, 32, 195, 130);
+      // Draw Logo on left side: enlarged width 230, height 153
+      ctx.drawImage(logoImg, 100, 24, 230, 153);
 
-      // Draw "VÉ ĐIỆN TỬ" badge or text on right side: matching size with PNR
-      // Border badge for "VÉ ĐIỆN TỬ"
-      const badgeW = 320;
-      const badgeH = 76;
-      const badgeX = 980 - badgeW;
-      const badgeY = 60;
-
-      ctx.fillStyle = '#FFFBEB';
-      ctx.strokeStyle = state.themeColor || BRAND_DEFAULT;
-      ctx.lineWidth = 3;
-      if (ctx.roundRect) {
-        ctx.beginPath();
-        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 14);
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-        ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
-      }
-
-      ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
-      ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('VÉ ĐIỆN TỬ', badgeX + (badgeW / 2), badgeY + 52);
+      // Draw "VÉ ĐIỆN TỬ" text on right side: no border/label, pure black, 52px bold (matching PNR)
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
 
       renderContents();
     };
@@ -819,12 +800,12 @@ function downloadStandaloneQR() {
       ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
       ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('SIMPLE TRAVEL', 100, 110);
+      ctx.fillText('SIMPLE TRAVEL', 100, 118);
 
-      ctx.fillStyle = '#64748B';
-      ctx.font = 'bold 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'right';
-      ctx.fillText('VÉ ĐIỆN TỬ', 980, 110);
+      ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
 
       renderContents();
     };
