@@ -1,5 +1,5 @@
 /* ============================================================
-   SIMPLE TRAVEL — E-TICKET GENERATOR  v2.4
+   SIMPLE TRAVEL — E-TICKET GENERATOR  v3.4
    app.js — Embedded Simple Travel Logo (No CORS Issues),
            Padded Canvas Capture (No Edge Touch),
            Editable & Updatable Saved LƯU Ý Templates (VI, EN, Bilingual, Custom)
@@ -93,6 +93,9 @@ const state = {
   airlineName: null,           // Custom airline name text or null for original
   originalAirlineLogo: null,   // Extracted from original ticket HTML
   originalAirlineName: null,   // Extracted from original ticket HTML
+  showA4QR: true,              // Show QR code badge on A4 ticket
+  ticketData: null,            // Extracted ticket data for mobile & QR
+  mobileUrl: '',               // Generated mobile URL with compressed data
 };
 
 // ─── DOM ────────────────────────────────────────────────────
@@ -138,6 +141,19 @@ const luuYNewTemplateName   = $('luu-y-new-template-name');
 const btnLuuYAddTemplate    = $('btn-luu-y-add-template');
 const btnLuuYUpdateTemplate = $('btn-luu-y-update-template');
 const btnLuuYResetAllTpls   = $('btn-luu-y-reset-all-templates');
+
+// Mobile 9:16 & QR Modal DOM
+const btnMobileQR           = $('btn-mobile-qr');
+const modalMobileQR         = $('modal-mobile-qr');
+const btnModalClose         = $('btn-modal-close');
+const mobilePreviewIframe   = $('mobile-preview-iframe');
+const qrCodeContainer       = $('qr-code-container');
+const btnDownloadQR         = $('btn-download-qr');
+const mobileUrlInput        = $('mobile-url-input');
+const btnCopyMobileUrl      = $('btn-copy-mobile-url');
+const btnDownloadMobileImg  = $('btn-download-mobile-img');
+const btnCopyMobileImg      = $('btn-copy-mobile-img');
+const a4QRToggle            = $('a4-qr-toggle');
 
 // Airline panel DOM
 const airlineLogoInput       = $('airline-logo-input');
@@ -442,6 +458,300 @@ function normalizePassengerDetailsAndLayout(root) {
   });
 }
 
+
+// ─── Extract Ticket Data for Mobile & QR ───────────────────────
+function extractTicketData(doc) {
+  if (!doc) return null;
+
+  // 1. PNR
+  const pnrEl = doc.getElementById('pnrCode') || doc.querySelector('.be-booking-code');
+  const pnr = pnrEl ? pnrEl.textContent.trim() : (state.fileName.replace(/[^A-Z0-9]/gi, '').slice(0, 6) || 'TICKET');
+
+  // 2. Airline
+  const airline = state.airlineName || 'VIETJET AIR';
+
+  // 3. Flights
+  const flights = [];
+  const fnRows = Array.from(doc.querySelectorAll('.be-flight-number'));
+  const fcRows = Array.from(doc.querySelectorAll('.be-fare-class'));
+  const hbRows = Array.from(doc.querySelectorAll('.be-hand-baggage'));
+  const abRows = Array.from(doc.querySelectorAll('.be-allowance-baggage'));
+
+  const stTimes = Array.from(doc.querySelectorAll('.be-start-time'));
+  const scCodes = Array.from(doc.querySelectorAll('.be-start-code'));
+  const sdDates = Array.from(doc.querySelectorAll('.be-start-date'));
+  const etTimes = Array.from(doc.querySelectorAll('.be-end-time'));
+  const edDates = Array.from(doc.querySelectorAll('.be-end-date'));
+
+  const routeBadges = Array.from(doc.querySelectorAll('.be-service-route'));
+  const rawRoutes = routeBadges.map(b => b.textContent.trim()).filter(r => r.includes('-'));
+  const routes = [];
+  rawRoutes.forEach(r => {
+    if (routes.length === 0 || routes[routes.length - 1] !== r) routes.push(r);
+  });
+
+  const count = Math.max(fnRows.length, stTimes.length, 1);
+  for (let i = 0; i < count; i++) {
+    const fn = fnRows[i] && fnRows[i].children[1] ? fnRows[i].children[1].textContent.trim() : '';
+    const fc = fcRows[i] && fcRows[i].children[1] ? fcRows[i].children[1].textContent.trim().replace(/^Jd+_/, '') : '';
+    const hb = hbRows[i] && hbRows[i].children[1] ? hbRows[i].children[1].textContent.trim() : '';
+    const ab = abRows[i] && abRows[i].children[1] ? abRows[i].children[1].textContent.trim() : '';
+
+    const dt = stTimes[i] ? stTimes[i].textContent.trim() : '';
+    let from = scCodes[i] ? scCodes[i].textContent.trim() : '';
+    let to = '';
+    if (routes[i] && routes[i].includes('-')) {
+      const parts = routes[i].split('-');
+      if (!from) from = parts[0].trim();
+      to = parts[1].trim();
+    }
+    const dd = sdDates[i] ? sdDates[i].textContent.replace(/^[A-Za-z]+,s*/, '').trim() : '';
+    const at = etTimes[i] ? etTimes[i].textContent.trim() : '';
+    const ad = edDates[i] ? edDates[i].textContent.replace(/^[A-Za-z]+,s*/, '').trim() : '';
+
+    flights.push({
+      fn,
+      fc,
+      from,
+      to,
+      dt,
+      dd,
+      at,
+      ad,
+      hb,
+      ab
+    });
+  }
+
+  // 4. Passengers
+  const passengers = [];
+  const passRows = Array.from(doc.querySelectorAll('tr[id^="eTktPassengerInfo"]'));
+  passRows.forEach(pr => {
+    const nameEl = pr.querySelector('.be-passenger-name');
+    const genderEl = pr.querySelector('.be-passenger-gender');
+    const typeEl = pr.querySelector('.be-passenger-type');
+    const ticketEl = pr.querySelector('.be-ticket-number strong') || pr.querySelector('[id^="eTktPassengerTicketNumber"] strong');
+
+    const n = nameEl ? nameEl.textContent.trim() : '';
+    const g = genderEl ? genderEl.textContent.trim() : '';
+    const t = typeEl ? typeEl.textContent.trim() : '';
+    const tk = ticketEl ? ticketEl.textContent.trim() : '';
+
+    if (n) {
+      passengers.push({ n, g, t, tk });
+    }
+  });
+
+  return {
+    p: pnr,
+    a: airline,
+    c: state.themeColor,
+    f: flights,
+    px: passengers,
+    h: '0768.188.224'
+  };
+}
+
+function generateMobileTicketUrl(ticketData) {
+  if (!ticketData) return '';
+  const jsonStr = JSON.stringify(ticketData);
+  const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+  const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+  const idx = window.location.pathname.lastIndexOf('/');
+  const path = (idx !== -1 ? window.location.pathname.slice(0, idx) : '') + '/m.html';
+  return (origin ? origin + path : 'm.html') + '#' + compressed;
+}
+
+function getQRCodeDataUrl(text, size = 180) {
+  const tempDiv = document.createElement('div');
+  new QRCode(tempDiv, {
+    text: text,
+    width: size,
+    height: size,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  const canvas = tempDiv.querySelector('canvas');
+  if (canvas) return canvas.toDataURL('image/png');
+  const img = tempDiv.querySelector('img');
+  return img ? img.src : '';
+}
+
+function syncA4QRBadge(root) {
+  if (!root) return;
+  let qrRow = root.getElementById ? root.getElementById('eTktQRRow') : root.querySelector('#eTktQRRow');
+  if (!state.showA4QR) {
+    if (qrRow) qrRow.style.display = 'none';
+    return;
+  }
+
+  const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+  const data = extractTicketData(iDoc);
+  if (!data) return;
+  const url = generateMobileTicketUrl(data);
+  const qrDataUrl = getQRCodeDataUrl(url, 120);
+
+  if (!qrRow) {
+    const remarkEl = root.getElementById ? root.getElementById('eTktRemark') : root.querySelector('#eTktRemark');
+    const remarkRow = remarkEl ? remarkEl.closest('tr') : (root.querySelector('table[style*="210mm"] tbody')?.lastElementChild || root.querySelector('tbody')?.lastElementChild);
+    
+    qrRow = document.createElement('tr');
+    qrRow.id = 'eTktQRRow';
+    qrRow.innerHTML = 
+      '<td colspan="2" style="padding-top: 14px; text-align: center; page-break-inside: avoid;">' +
+        '<div style="display:inline-flex; align-items:center; justify-content:center; gap:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:8px 16px; margin:0 auto; box-sizing:border-box;">' +
+          '<div style="width:58px; height:58px; background:#fff; padding:2px; border:1px solid #cbd5e1; border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">' +
+            '<img class="a4-qr-img" src="' + qrDataUrl + '" style="width:100%; height:100%; object-fit:contain;" alt="QR Code">' +
+          '</div>' +
+          '<div style="text-align:left;">' +
+            '<div style="font-weight:700; font-size:11.5px; color:#0f172a; margin-bottom:2px;">📱 VÉ MÁY BAY ĐIỆN TỬ MOBILE</div>' +
+            '<div style="font-size:10.5px; color:#475569; line-height:1.35;">Quét mã QR bằng Camera hoặc Zalo để mở vé trực tuyến trên smartphone</div>' +
+          '</div>' +
+        '</div>' +
+      '</td>';
+    if (remarkRow && remarkRow.parentNode) {
+      remarkRow.parentNode.insertBefore(qrRow, remarkRow.nextSibling);
+    }
+  } else {
+    qrRow.style.display = '';
+    const img = qrRow.querySelector('.a4-qr-img');
+    if (img) img.src = qrDataUrl;
+  }
+}
+
+// ─── Modal 9:16 & QR Logic ──────────────────────────────────
+function openMobileQRModal() {
+  const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+  if (!iDoc || !iDoc.body) {
+    showToast('Chưa có dữ liệu vé!', 'error');
+    return;
+  }
+
+  const ticketData = extractTicketData(iDoc);
+  state.ticketData = ticketData;
+  state.mobileUrl = generateMobileTicketUrl(ticketData);
+
+  mobileUrlInput.value = state.mobileUrl;
+
+  qrCodeContainer.innerHTML = '';
+  new QRCode(qrCodeContainer, {
+    text: state.mobileUrl,
+    width: 140,
+    height: 140,
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  const comp = LZString.compressToEncodedURIComponent(JSON.stringify(ticketData));
+  mobilePreviewIframe.src = 'm.html#' + comp;
+
+  modalMobileQR.style.display = 'flex';
+}
+
+function closeMobileQRModal() {
+  modalMobileQR.style.display = 'none';
+}
+
+function copyMobileUrl() {
+  if (!state.mobileUrl) return;
+  navigator.clipboard.writeText(state.mobileUrl).then(() => {
+    showToast('📋 Đã sao chép link vé trực tuyến!', 'success');
+  }).catch(() => {
+    mobileUrlInput.select();
+    document.execCommand('copy');
+    showToast('📋 Đã sao chép link vé trực tuyến!', 'success');
+  });
+}
+
+function downloadStandaloneQR() {
+  const canvas = qrCodeContainer.querySelector('canvas');
+  if (!canvas) {
+    showToast('Chưa tạo được mã QR', 'error');
+    return;
+  }
+
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = 360;
+  exportCanvas.height = 420;
+  const ctx = exportCanvas.getContext('2d');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 360, 420);
+
+  ctx.fillStyle = state.themeColor || '#F5A623';
+  ctx.fillRect(0, 0, 360, 56);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('SIMPLE TRAVEL — E-TICKET', 180, 35);
+
+  ctx.drawImage(canvas, 60, 80, 240, 240);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 16px sans-serif';
+  ctx.fillText('Mã đặt chỗ: ' + (state.ticketData?.p || ''), 180, 350);
+
+  ctx.fillStyle = '#64748b';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('Quét bằng Camera hoặc Zalo để mở vé', 180, 378);
+
+  const link = document.createElement('a');
+  link.download = 'QR_VeMayBay_' + (state.ticketData?.p || 'SimpleTravel') + '.png';
+  link.href = exportCanvas.toDataURL('image/png');
+  link.click();
+  showToast('✅ Đã tải file ảnh mã QR!', 'success');
+}
+
+async function captureMobileCard(scale = 2.5) {
+  const mDoc = mobilePreviewIframe.contentDocument || mobilePreviewIframe.contentWindow.document;
+  if (!mDoc) throw new Error('Không truy cập được màn hình mobile');
+  const card = mDoc.getElementById('ticketCard');
+  if (!card) throw new Error('Chưa tải xong vé');
+
+  return await html2canvas(card, {
+    scale: scale,
+    useCORS: true,
+    allowTaint: true,
+    backgroundColor: '#ffffff'
+  });
+}
+
+async function downloadMobile916Image() {
+  showLoading(true);
+  try {
+    const canvas = await captureMobileCard(3);
+    const link = document.createElement('a');
+    link.download = 'Ve_Mobile_9x16_' + (state.ticketData?.p || 'SimpleTravel') + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    showToast('✅ Đã tải ảnh vé 9:16 Full HD thành công!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Lỗi tải ảnh 9:16: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function copyMobile916Image() {
+  showLoading(true);
+  try {
+    const canvas = await captureMobileCard(2.5);
+    canvas.toBlob(async blob => {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('📋 Đã copy ảnh vé 9:16 vào clipboard!', 'success');
+      } catch (e) {
+        showToast('Trình duyệt không hỗ trợ copy ảnh trực tiếp', 'error');
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Lỗi copy ảnh: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
 // ─── Render Preview ─────────────────────────────────────────
 function updatePreview() {
   if (!state.rawHTML) return;
@@ -470,6 +780,7 @@ function updatePreview() {
     normalizePassengerDetailsAndLayout(doc);
     applyAirlineLogoToIframe();
     syncLuuYToIframe();
+    syncA4QRBadge(doc);
     resizeIframe();
   }, 60);
 
@@ -745,6 +1056,7 @@ function exportPDF() {
   }
 
   normalizePassengerDetailsAndLayout(iDoc);
+  syncA4QRBadge(iDoc);
 
   let html = '<!DOCTYPE html>\n' + iDoc.documentElement.outerHTML;
 
@@ -879,6 +1191,7 @@ async function captureToCanvas() {
   // Clone the ticket table
   const clone = ticketTable.cloneNode(true);
   normalizePassengerDetailsAndLayout(clone);
+  syncA4QRBadge(clone);
   clone.style.margin = '0 auto';
   clone.style.width = '100%';
   clone.style.maxWidth = '790px';
@@ -1325,6 +1638,41 @@ if (btnLuuYResetAllTpls) {
 
 // Window resize observer
 window.addEventListener('resize', resizeIframe);
+
+
+// ─── Mobile 9:16 & QR Modal Listeners ───────────────────────
+if (btnMobileQR) {
+  btnMobileQR.addEventListener('click', openMobileQRModal);
+}
+if (btnModalClose) {
+  btnModalClose.addEventListener('click', closeMobileQRModal);
+}
+if (modalMobileQR) {
+  modalMobileQR.addEventListener('click', e => {
+    if (e.target === modalMobileQR) closeMobileQRModal();
+  });
+}
+if (btnCopyMobileUrl) {
+  btnCopyMobileUrl.addEventListener('click', copyMobileUrl);
+}
+if (btnDownloadQR) {
+  btnDownloadQR.addEventListener('click', downloadStandaloneQR);
+}
+if (btnDownloadMobileImg) {
+  btnDownloadMobileImg.addEventListener('click', downloadMobile916Image);
+}
+if (btnCopyMobileImg) {
+  btnCopyMobileImg.addEventListener('click', copyMobile916Image);
+}
+if (a4QRToggle) {
+  a4QRToggle.addEventListener('change', e => {
+    state.showA4QR = e.target.checked;
+    const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+    syncA4QRBadge(iDoc);
+    resizeIframe();
+    showToast(state.showA4QR ? '✅ Đã bật mã QR trên vé A4' : '🙈 Đã tắt mã QR trên vé A4', '');
+  });
+}
 
 // ─── Init ───────────────────────────────────────────────────
 buildPresets();
