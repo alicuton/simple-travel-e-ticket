@@ -66,16 +66,21 @@
     .airline-badge {
       display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: center;
       background: #F8FAFC;
       border: 1px solid #E2E8F0;
       border-radius: 8px;
-      padding: 4px 10px;
+      padding: 4px 8px;
+      min-height: 28px;
+      max-height: 38px;
     }
-    .airline-badge img {
-      max-height: 24px;
-      max-width: 65px;
+    .airline-badge img, .airline-logo-img {
+      max-height: 26px;
+      max-width: 120px;
+      width: auto;
+      height: auto;
       object-fit: contain;
+      display: block;
     }
     .airline-badge span {
       font-size: 11px;
@@ -416,103 +421,89 @@
       text-align: center;
       max-width: 90vw;
     }
-    /* Modal Image Preview (Zalo / Mobile Save Guide) */
-    .img-modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.88);
-      backdrop-filter: blur(8px);
-      z-index: 3000;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-    .img-modal-content {
-      background: #FFFFFF;
-      border-radius: 18px;
-      max-width: 440px;
+    /* Zalo Notification Banner (Situates directly above ticket info) */
+    .zalo-notice-banner {
       width: 100%;
-      max-height: 92vh;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-      animation: modalFadeIn 0.25s ease-out;
-    }
-    @keyframes modalFadeIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    .img-modal-header {
-      padding: 12px 16px;
-      background: #F8FAFC;
-      border-bottom: 1px solid #E2E8F0;
-      display: flex;
+      background: #1E293B;
+      border: 1.5px solid var(--sp);
+      border-radius: 14px;
+      padding: 12px 14px;
+      margin-bottom: 14px;
+      display: none;
       align-items: center;
-      justify-content: space-between;
+      gap: 10px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+      transition: all 0.3s ease;
     }
-    .img-modal-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: #0F172A;
+    .zalo-notice-banner.banner-pulse {
+      transform: scale(1.02);
+      box-shadow: 0 0 20px var(--sp);
     }
-    .img-modal-close {
-      background: none;
-      border: none;
-      font-size: 18px;
-      font-weight: bold;
-      color: #64748B;
-      cursor: pointer;
-      padding: 4px 8px;
+    .zalo-notice-icon {
+      font-size: 22px;
+      line-height: 1;
+      flex-shrink: 0;
     }
-    .img-modal-guide {
-      background: #FFFBEB;
-      border-bottom: 1px solid #FEF3C7;
-      padding: 10px 14px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #92400E;
-      text-align: center;
-      line-height: 1.4;
-    }
-    .img-modal-body {
-      padding: 12px;
-      overflow-y: auto;
-      text-align: center;
-      background: #F1F5F9;
+    .zalo-notice-body {
       flex: 1;
     }
-    .img-modal-body img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      display: block;
-      margin: 0 auto;
-      -webkit-touch-callout: default !important;
-      pointer-events: auto !important;
-      cursor: pointer;
+    .zalo-notice-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--sp);
+      margin-bottom: 2px;
     }
-    .img-modal-footer {
-      padding: 10px 14px;
-      background: #FFFFFF;
-      border-top: 1px solid #E2E8F0;
-      display: flex;
-      gap: 10px;
+    .zalo-notice-text {
+      font-size: 12.5px;
+      color: #E2E8F0;
+      line-height: 1.45;
+    }
+    .zalo-notice-text strong {
+      color: #FFFFFF;
+    }
+    .btn-banner-copy-link {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: #FFFFFF;
+      padding: 8px 11px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .btn-banner-copy-link:active {
+      transform: scale(0.95);
+      background: #10B981;
     }
   </style>
 </head>
 <body>
 
   <div class="mobile-shell">
+    <!-- Zalo Notification Banner (situated right above ticket info) -->
+    <div id="zalo-notice-banner" class="zalo-notice-banner">
+      <div class="zalo-notice-icon">💡</div>
+      <div class="zalo-notice-body">
+        <div class="zalo-notice-title">Mở bằng trình duyệt máy để tải ảnh vé</div>
+        <div class="zalo-notice-text">
+          Bấm nút <strong>[ ••• ]</strong> ở góc trên Zalo ➔ Chọn <strong>"Mở bằng trình duyệt"</strong> (Safari / Chrome)
+        </div>
+      </div>
+      <button id="btn-banner-copy-link" class="btn-banner-copy-link" title="Copy link vé">🔗 Copy link</button>
+    </div>
+
     <!-- Card to capture -->
     <div id="ticket-card" class="ticket-card">
       <!-- Header -->
       <div class="ticket-header">
         <img class="ticket-logo" id="ticket-logo" src="" alt="Simple Travel">
         <div class="airline-badge" id="airline-badge">
+          <img id="airline-logo-img" class="airline-logo-img" src="" alt="Logo hãng" style="display:none;">
           <span id="airline-name">VIETJET AIR</span>
         </div>
       </div>
@@ -552,40 +543,6 @@
     </button>
   </div>
 
-  <!-- Modal Notice: Open with Safari/Chrome on Zalo -->
-  <div id="img-modal-overlay" class="img-modal-overlay">
-    <div class="img-modal-content">
-      <div class="img-modal-header">
-        <span class="img-modal-title" id="img-modal-title">💡 Lưu vé trên trình duyệt máy</span>
-        <button id="btn-modal-img-close" class="img-modal-close" title="Đóng">✕</button>
-      </div>
-
-      <!-- Zalo clean guide -->
-      <div id="zalo-guide-box" style="padding:20px 18px;text-align:left;">
-        <div style="background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:14px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,0.03);">
-          <div style="font-size:14px;color:#1E293B;line-height:1.7;font-weight:500;">
-            Để tải ảnh vé sắc nét vào Album hoặc chia sẻ, vui lòng mở trang này bằng <strong>Safari</strong> hoặc <strong>Chrome</strong>:
-          </div>
-          <div style="margin-top:14px;padding:12px 14px;background:#FFFBEB;border:1px dashed #F59E0B;border-radius:10px;font-size:13.5px;color:#92400E;line-height:1.6;font-weight:600;">
-            👉 Bấm nút <strong>[ ••• ]</strong> ở góc trên cùng Zalo <br>
-            ➔ Chọn <strong>"Mở bằng trình duyệt"</strong> (Safari / Chrome).
-          </div>
-          <div style="margin-top:12px;font-size:12px;color:#64748B;line-height:1.5;">
-            💡 <em>Mẹo: Bạn có thể bấm nút "Copy link vé" bên dưới rồi dán vào trình duyệt Safari / Chrome nếu cần.</em>
-          </div>
-        </div>
-      </div>
-
-      <div class="img-modal-footer" style="padding:14px 18px;background:#FFFFFF;">
-        <button id="btn-modal-copy-link" class="btn-action btn-save-img" style="flex:1.2;font-size:13px;padding:12px 10px;font-weight:700;">
-          🔗 Copy link vé
-        </button>
-        <button id="btn-modal-close-guide" class="btn-action btn-copy-info" style="flex:0.8;font-size:13px;padding:12px 10px;background:#F1F5F9;color:#475569;font-weight:600;">
-          Đã hiểu
-        </button>
-      </div>
-    </div>
-  </div>
 
   <div id="toast" class="toast"></div>
 
@@ -809,10 +766,67 @@
       document.documentElement.style.setProperty('--flight-header-bg', 'var(--sp)');
     }
 
+    // Airline Logo Resolver (LocalStorage from uploaded ticket or crisp vector SVG)
+    function getAirlineLogo(airlineName, pnr, flights) {
+      try {
+        if (pnr) {
+          const cached = localStorage.getItem('st_airline_logo_' + pnr);
+          if (cached) return cached;
+        }
+        if (airlineName) {
+          const cachedAir = localStorage.getItem('st_airline_logo_' + airlineName.trim());
+          if (cachedAir) return cachedAir;
+        }
+      } catch(e) {}
+
+      const air = (airlineName || '').toLowerCase();
+      const fn = (flights && flights.length > 0 && flights[0].flightNum) ? flights[0].flightNum.toUpperCase() : '';
+
+      // 1. Vietjet Air
+      if (air.includes('vietjet') || fn.startsWith('VJ')) {
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 140 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="vjW" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#EE1C25"/><stop offset="100%" stop-color="#C4161E"/></linearGradient></defs><path d="M6 24 C10 18, 16 10, 26 6 C20 12, 14 19, 11 26 Z" fill="#FFCC00"/><path d="M2 26 C6 18, 14 8, 28 4 C20 12, 12 21, 8 28 Z" fill="url(#vjW)"/><circle cx="28" cy="4" r="2" fill="#FFCC00"/><text x="32" y="21" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="900" font-style="italic" font-size="16" fill="#EE1C25" letter-spacing="-0.5">vietjet</text><text x="96" y="21" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="900" font-style="italic" font-size="16" fill="#FF9900" letter-spacing="-0.5">Air</text></svg>');
+      }
+
+      // 2. Vietnam Airlines
+      if (air.includes('vietnam') || fn.startsWith('VN')) {
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 2) scale(0.75)"><path d="M16 2 C13 10, 13 22, 16 32 C19 22, 19 10, 16 2 Z" fill="#D4A843"/><path d="M15 7 C8 13, 7 24, 13 32 C11 23, 11 14, 15 7 Z" fill="#CEA052"/><path d="M17 7 C24 13, 25 24, 19 32 C21 23, 21 14, 17 7 Z" fill="#CEA052"/><path d="M13 14 C4 18, 2 27, 10 32 C6 26, 8 19, 13 14 Z" fill="#BF9035"/><path d="M19 14 C28 18, 30 27, 22 32 C26 26, 24 19, 19 14 Z" fill="#BF9035"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="9" fill="#002C5F" letter-spacing="0.5">VIETNAM</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8.5" fill="#002C5F" letter-spacing="1">AIRLINES</text></svg>');
+      }
+
+      // 3. Bamboo Airways
+      if (air.includes('bamboo') || fn.startsWith('QH')) {
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 3) scale(0.75)"><path d="M18 28 C18 16, 10 6, 2 2 C8 10, 12 18, 14 28 Z" fill="#00843D"/><path d="M18 28 C20 18, 24 10, 32 4 C28 12, 24 20, 20 28 Z" fill="#005B2B"/><path d="M18 28 C19 14, 25 4, 30 0 C24 8, 20 18, 18 28 Z" fill="#0E2B4C"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="10" fill="#00843D" letter-spacing="0.5">BAMBOO</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8" fill="#0E2B4C" letter-spacing="1.2">AIRWAYS</text></svg>');
+      }
+
+      // 4. Pacific Airlines
+      if (air.includes('pacific') || fn.startsWith('BL')) {
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 4) scale(0.75)"><path d="M4 22 L22 4 C25 2, 28 4, 26 8 L16 22 Z" fill="#FF5B00"/><path d="M14 22 L28 10 C30 8, 32 10, 30 14 L22 22 Z" fill="#00205B"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="9.5" fill="#00205B" letter-spacing="0.2">PACIFIC</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8" fill="#FF5B00" letter-spacing="1">AIRLINES</text></svg>');
+      }
+
+      // 5. Vietravel Airlines
+      if (air.includes('vietravel') || fn.startsWith('VU')) {
+        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 4) scale(0.75)"><path d="M2 22 C8 14, 16 6, 28 2 C20 10, 12 18, 6 24 Z" fill="#FFCB05"/><path d="M10 22 C16 16, 22 10, 30 6 C24 12, 18 18, 14 24 Z" fill="#003366"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="9.5" fill="#003366" letter-spacing="0.2">VIETRAVEL</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8" fill="#FFCB05" letter-spacing="1">AIRLINES</text></svg>');
+      }
+
+      return null;
+    }
+
     // Populate Brand & PNR
     document.getElementById('ticket-logo').src = LOGO_BASE64;
-    document.getElementById('airline-name').textContent = data.airline || 'VIETJET AIR';
     document.getElementById('pnr-code').textContent = data.pnr || 'SAQ68D';
+
+    const airlineLogoSrc = getAirlineLogo(data.airline, data.pnr, data.flights);
+    const airlineLogoImg = document.getElementById('airline-logo-img');
+    const airlineNameSpan = document.getElementById('airline-name');
+
+    if (airlineLogoSrc) {
+      airlineLogoImg.src = airlineLogoSrc;
+      airlineLogoImg.style.display = 'block';
+      airlineNameSpan.style.display = 'none';
+    } else {
+      airlineLogoImg.style.display = 'none';
+      airlineNameSpan.textContent = data.airline || 'VIETJET AIR';
+      airlineNameSpan.style.display = 'inline';
+    }
 
     // Populate Flights
     const flCont = document.getElementById('flights-container');
@@ -894,68 +908,57 @@
     }
 
 
-    // Modal Notice Handling (Zalo Guide)
-    const imgModalOverlay = document.getElementById('img-modal-overlay');
-    const btnModalImgClose = document.getElementById('btn-modal-img-close');
-    const btnModalCloseGuide = document.getElementById('btn-modal-close-guide');
-    const btnModalCopyLink = document.getElementById('btn-modal-copy-link');
-
-    function openNoticeModal() {
-      if (!imgModalOverlay) return;
-      imgModalOverlay.style.display = 'flex';
+    // Zalo Notice Banner Handling
+    const isZalo = /zalo/i.test(navigator.userAgent);
+    const zaloNoticeBanner = document.getElementById('zalo-notice-banner');
+    if (isZalo && zaloNoticeBanner) {
+      zaloNoticeBanner.style.display = 'flex';
     }
 
-    function closeNoticeModal() {
-      if (imgModalOverlay) imgModalOverlay.style.display = 'none';
-    }
+    const btnBannerCopyLink = document.getElementById('btn-banner-copy-link');
 
-    if (btnModalImgClose) btnModalImgClose.addEventListener('click', closeNoticeModal);
-    if (btnModalCloseGuide) btnModalCloseGuide.addEventListener('click', closeNoticeModal);
-    if (imgModalOverlay) {
-      imgModalOverlay.addEventListener('click', e => {
-        if (e.target === imgModalOverlay) closeNoticeModal();
-      });
-    }
-
-    if (btnModalCopyLink) {
-      btnModalCopyLink.addEventListener('click', () => {
-        const urlToCopy = window.location.href;
-        const onCopied = () => {
-          btnModalCopyLink.innerHTML = '✅ ĐÃ COPY LINK VÉ!';
-          btnModalCopyLink.style.background = '#10B981';
-          btnModalCopyLink.style.color = '#FFFFFF';
-          showToast('🔗 Đã copy link vé! Mở Safari/Chrome và dán để xem/tải vé');
+    function copyTicketLink(btnEl) {
+      const urlToCopy = window.location.href;
+      const onCopied = () => {
+        if (btnEl) {
+          const prevText = btnEl.innerHTML;
+          btnEl.innerHTML = '✅ Đã copy!';
+          btnEl.style.background = '#10B981';
+          btnEl.style.borderColor = '#10B981';
+          btnEl.style.color = '#FFFFFF';
           setTimeout(() => {
-            btnModalCopyLink.innerHTML = '🔗 Copy link vé';
-            btnModalCopyLink.style.background = '';
-            btnModalCopyLink.style.color = '';
+            btnEl.innerHTML = prevText;
+            btnEl.style.background = '';
+            btnEl.style.borderColor = '';
+            btnEl.style.color = '';
           }, 3500);
-        };
-
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-          navigator.clipboard.writeText(urlToCopy).then(onCopied).catch(() => {
-            const ta = document.createElement('textarea');
-            ta.value = urlToCopy;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            onCopied();
-          });
-        } else {
-          const ta = document.createElement('textarea');
-          ta.value = urlToCopy;
-          ta.style.position = 'fixed';
-          ta.style.opacity = '0';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
-          onCopied();
         }
-      });
+        showToast('🔗 Đã copy link vé! Mở Safari / Chrome để lưu vào Album.');
+      };
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(urlToCopy).then(onCopied).catch(() => {
+          fallbackCopy(urlToCopy, onCopied);
+        });
+      } else {
+        fallbackCopy(urlToCopy, onCopied);
+      }
+    }
+
+    function fallbackCopy(text, cb) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch(e) {}
+      document.body.removeChild(ta);
+      if (cb) cb();
+    }
+
+    if (btnBannerCopyLink) {
+      btnBannerCopyLink.addEventListener('click', () => copyTicketLink(btnBannerCopyLink));
     }
 
     // Action: Save Image (Zalo, Safari, Mobile & Desktop optimized)
@@ -964,9 +967,24 @@
       const isZalo = /zalo/i.test(navigator.userAgent);
 
       // 1. In Zalo In-App Browser:
-      // Show instant notice to open via Safari/Chrome without long press or blank page errors
+      // Show notice banner on top, copy link & provide instant feedback without popup/download error
       if (isZalo) {
-        openNoticeModal();
+        if (zaloNoticeBanner) {
+          zaloNoticeBanner.style.display = 'flex';
+          zaloNoticeBanner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          zaloNoticeBanner.classList.add('banner-pulse');
+          setTimeout(() => zaloNoticeBanner.classList.remove('banner-pulse'), 1500);
+        }
+        const btnSave = document.getElementById('btn-save-img');
+        const prevText = btnSave.innerHTML;
+        btnSave.innerHTML = '✅ ĐÃ COPY LINK VÉ!';
+        btnSave.style.background = '#10B981';
+        setTimeout(() => {
+          btnSave.innerHTML = prevText;
+          btnSave.style.background = '';
+        }, 3500);
+        copyTicketLink(null);
+        showToast('👉 Bấm [ ••• ] góc trên Zalo ➔ Mở bằng trình duyệt (Safari/Chrome)');
         return;
       }
 

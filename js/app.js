@@ -159,6 +159,7 @@ const a4QRToggle            = $('a4-qr-toggle');
 // History Modal DOM
 const btnHeaderHistory      = $('btn-header-history');
 const btnToolbarHistory     = $('btn-toolbar-history');
+const btnSaveBooking        = $('btn-save-booking');
 const modalHistory          = $('modal-history');
 const btnModalHistoryClose  = $('btn-modal-history-close');
 const historySearchInput    = $('history-search-input');
@@ -803,7 +804,12 @@ function openMobileQRModal() {
   const ticketData = extractTicketData(iDoc);
   state.ticketData = ticketData;
   state.mobileUrl = generateMobileTicketUrl(ticketData);
-  saveTicketToHistory();
+  if (ticketData && ticketData.p) {
+    const logoSrc = state.airlineLogo || state.originalAirlineLogo;
+    if (logoSrc) {
+      try { localStorage.setItem('st_airline_logo_' + ticketData.p, logoSrc); } catch(e) {}
+    }
+  }
 
   mobileUrlInput.value = state.mobileUrl;
 
@@ -1131,7 +1137,11 @@ async function loadFile(file) {
     applyColor(state.themeColor);
     showLoading(false);
     showToast('✅ Đã tải file thành công!', 'success');
-    setTimeout(() => saveTicketToHistory(), 600);
+    const logoSrc = state.airlineLogo || state.originalAirlineLogo;
+    const pnr = state.fileName.replace(/[^A-Z0-9]/gi, '').slice(0, 6);
+    if (logoSrc && pnr) {
+      try { localStorage.setItem('st_airline_logo_' + pnr, logoSrc); } catch(e) {}
+    }
   };
   reader.readAsText(file, 'UTF-8');
 }
@@ -1958,15 +1968,16 @@ function getTicketHistory() {
 }
 
 function saveTicketToHistory() {
-  if (!state.rawHTML) return;
+  if (!state.rawHTML) return false;
   const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-  if (!iDoc) return;
+  if (!iDoc) return false;
 
   const data = extractTicketData(iDoc);
-  if (!data || !data.p) return;
+  if (!data || !data.p) return false;
 
   const history = getTicketHistory();
   const pnr = data.p;
+  const logoSrc = state.airlineLogo || state.originalAirlineLogo;
 
   const routesStr = (data.f || []).map(f => {
     let r = (f.from || '') + ' → ' + (f.to || '');
@@ -1979,6 +1990,7 @@ function saveTicketToHistory() {
   const record = {
     pnr: pnr,
     airline: data.a || state.airlineName || 'VIETJET AIR',
+    airlineLogo: logoSrc,
     routes: routesStr,
     passengers: passengersStr,
     mobileUrl: state.mobileUrl || generateMobileTicketUrl(data),
@@ -2007,9 +2019,13 @@ function saveTicketToHistory() {
 
   try {
     localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
+    if (logoSrc) {
+      localStorage.setItem('st_airline_logo_' + pnr, logoSrc);
+    }
   } catch (e) {
     console.warn('LocalStorage save history error:', e);
   }
+  return true;
 }
 
 function openHistoryModal() {
@@ -2038,9 +2054,9 @@ function renderHistoryList(query = '') {
       '<div style="text-align: center; padding: 48px 20px; color: var(--brand-muted);">' +
         '<div style="font-size: 32px; margin-bottom: 8px;">📭</div>' +
         '<div style="font-weight: 600; font-size: 14px; color: var(--brand-dark);">' +
-          (q ? 'Không tìm thấy kết quả nào phù hợp' : 'Chưa có vé nào được lưu trong lịch sử') +
+          (q ? 'Không tìm thấy kết quả nào phù hợp' : 'Chưa có booking nào được lưu trong lịch sử') +
         '</div>' +
-        '<p style="font-size: 12px; margin-top: 4px;">Mỗi khi bạn tải vé lên hoặc thao tác, hệ thống sẽ tự động lưu lại tại đây.</p>' +
+        '<p style="font-size: 12px; margin-top: 4px;">Bấm nút <strong>"💾 Lưu booking"</strong> trên thanh công cụ xem trước để lưu các vé chính thức vào danh sách này.</p>' +
       '</div>';
     return;
   }
@@ -2185,6 +2201,19 @@ if (btnHeaderHistory) {
 }
 if (btnToolbarHistory) {
   btnToolbarHistory.addEventListener('click', openHistoryModal);
+}
+if (btnSaveBooking) {
+  btnSaveBooking.addEventListener('click', () => {
+    const ok = saveTicketToHistory();
+    if (ok) {
+      const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+      const data = extractTicketData(iDoc);
+      const pnr = (data && data.p) ? data.p : (state.fileName || 'TICKET');
+      showToast('💾 Đã lưu booking [' + pnr + '] vào Lịch sử!', 'success');
+    } else {
+      showToast('⚠️ Chưa có thông tin vé nào để lưu!', '');
+    }
+  });
 }
 if (btnModalHistoryClose) {
   btnModalHistoryClose.addEventListener('click', closeHistoryModal);

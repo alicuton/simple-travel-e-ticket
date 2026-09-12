@@ -494,6 +494,8 @@ input, textarea, select { font-family: inherit; }
 .btn--img:hover { background: #047857; }
 .btn--copy { background: #7c3aed; color: white; }
 .btn--copy:hover { background: #6d28d9; }
+.btn--save-booking { background: #0284c7; color: white; }
+.btn--save-booking:hover { background: #0369a1; }
 .btn--edit { background: transparent; border: 1px solid var(--brand-border); color: var(--brand-text); }
 .btn--edit:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
 .btn--edit.active {
