@@ -748,38 +748,32 @@ function downloadStandaloneQR() {
     ctx.fillRect(0, 0, 1080, 1260);
 
     const renderContents = () => {
-      // 1. Subtitle text: E-TICKET
-      ctx.fillStyle = '#475569';
-      ctx.font = '700 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('E - T I C K E T', 540, 175);
-
       // Subtle separator line
-      ctx.strokeStyle = '#F1F5F9';
+      ctx.strokeStyle = '#E2E8F0';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(120, 205);
-      ctx.lineTo(960, 205);
+      ctx.moveTo(100, 195);
+      ctx.lineTo(980, 195);
       ctx.stroke();
 
       // 2. Draw QR Code in center
-      ctx.drawImage(qrCanvas, 200, 235, 680, 680);
+      ctx.drawImage(qrCanvas, 200, 230, 680, 680);
 
-      // 3. PNR Text below QR (Minimalist)
+      // 3. PNR Text below QR (bold 52px)
       ctx.fillStyle = '#0F172A';
-      ctx.font = 'bold 50px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1025);
+      ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1010);
 
-      // 4. Footer: Orange background, only phone number
+      // 4. Footer: Orange background, large text matching PNR size (50px)
       const footerColor = state.themeColor || BRAND_DEFAULT;
       ctx.fillStyle = footerColor;
-      ctx.fillRect(0, 1140, 1080, 120);
+      ctx.fillRect(0, 1120, 1080, 140);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.font = 'bold 34px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('Hotline: 0768.188.224', 540, 1212);
+      ctx.fillText('Hotline: 0768.188.224', 540, 1206);
 
       const link = document.createElement('a');
       link.download = 'QR_VeMayBay_' + pnr + '.png';
@@ -788,21 +782,50 @@ function downloadStandaloneQR() {
       showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
     };
 
-    // Draw Simple Travel Logo at top
+    // Draw Top Header: Logo on the left + "VÉ ĐIỆN TỬ" text on the right (like the mobile ticket header)
     const logoImg = new Image();
     logoImg.onload = () => {
-      // Natural logo aspect ratio ~ 1.5. Render width 195, height 130
-      const lw = 195;
-      const lh = 130;
-      ctx.drawImage(logoImg, 540 - (lw / 2), 22, lw, lh);
+      // Draw Logo on left side: width 195, height 130
+      ctx.drawImage(logoImg, 100, 32, 195, 130);
+
+      // Draw "VÉ ĐIỆN TỬ" badge or text on right side: matching size with PNR
+      // Border badge for "VÉ ĐIỆN TỬ"
+      const badgeW = 320;
+      const badgeH = 76;
+      const badgeX = 980 - badgeW;
+      const badgeY = 60;
+
+      ctx.fillStyle = '#FFFBEB';
+      ctx.strokeStyle = state.themeColor || BRAND_DEFAULT;
+      ctx.lineWidth = 3;
+      if (ctx.roundRect) {
+        ctx.beginPath();
+        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 14);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+        ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+      }
+
+      ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
+      ctx.font = 'bold 36px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('VÉ ĐIỆN TỬ', badgeX + (badgeW / 2), badgeY + 52);
+
       renderContents();
     };
     logoImg.onerror = () => {
-      // Fallback text if logo fails to render
       ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
-      ctx.font = 'bold 44px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('SIMPLE TRAVEL', 540, 95);
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('SIMPLE TRAVEL', 100, 110);
+
+      ctx.fillStyle = '#64748B';
+      ctx.font = 'bold 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('VÉ ĐIỆN TỬ', 980, 110);
+
       renderContents();
     };
     logoImg.src = SIMPLE_TRAVEL_LOGO_BASE64;

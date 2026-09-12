@@ -481,6 +481,8 @@
       text-align: center;
       background: #F1F5F9;
       flex: 1;
+      user-select: none;
+      -webkit-user-select: none;
     }
     .img-modal-body img {
       max-width: 100%;
@@ -489,6 +491,9 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       display: block;
       margin: 0 auto;
+      -webkit-touch-callout: default !important;
+      user-select: none;
+      -webkit-user-select: none;
     }
     .img-modal-footer {
       padding: 10px 14px;
@@ -857,36 +862,49 @@
         const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || ('ontouchstart' in window);
         const isZalo = /zalo/i.test(navigator.userAgent);
 
-        // 1. In Zalo In-App Browser: open modal so user can tap & hold 1s to save directly into Camera Roll
-        if (isZalo) {
-          openImgModal(dataUrl, filename);
-          showToast('👆 Chạm và giữ ảnh 1s để lưu');
-          return;
-        }
-
-        // 2. On Mobile (Safari, Chrome): Use Web Share API so it can be saved directly to Photos
-        if (isMobile && navigator.share && navigator.canShare) {
+        // 1. Try Web Share API with File first (Works natively on iOS Safari, Android, and WebViews supporting Share)
+        if (isMobile && navigator.share) {
           try {
             const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
             const file = new File([blob], filename, { type: 'image/png' });
-            if (navigator.canShare({ files: [file] })) {
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
               await navigator.share({
                 files: [file],
                 title: 'Vé điện tử ' + (data.pnr || '')
               });
-              showToast('✅ Đã mở bảng lưu ảnh');
+              showToast('✅ Đã mở bảng chia sẻ/lưu ảnh');
+              return;
+            } else {
+              // Try share with URL/title if file sharing isn't permitted
+              await navigator.share({
+                title: 'Vé điện tử ' + (data.pnr || ''),
+                url: window.location.href
+              });
               return;
             }
           } catch (shareErr) {
             if (shareErr.name === 'AbortError') return; // User cancelled share sheet
-            console.warn('Web Share failed, falling back to modal:', shareErr);
+            console.warn('navigator.share failed, trying direct save/modal fallback:', shareErr);
           }
         }
 
-        // 3. Fallback for mobile if Web Share is not supported or failed
+        // 2. Try direct download anchor (some WebViews allow direct blob download)
+        try {
+          const a = document.createElement('a');
+          a.href = dataUrl;
+          a.download = filename;
+          a.target = '_blank';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        } catch(dlErr) {
+          console.warn('Anchor download failed:', dlErr);
+        }
+
+        // 3. Fallback on mobile: open modal view with text selection disabled so iOS/Android won't trigger Live Text / Select Text
         if (isMobile) {
           openImgModal(dataUrl, filename);
-          showToast('👆 Chạm và giữ ảnh 1s để lưu');
+          showToast('👆 Chạm và giữ ảnh để Lưu vào máy');
           return;
         }
 
