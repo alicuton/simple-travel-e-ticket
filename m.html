@@ -404,15 +404,17 @@
       top: 20px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.92);
+      background: rgba(15, 23, 42, 0.95);
       color: #FFFFFF;
-      padding: 10px 18px;
+      padding: 12px 20px;
       border-radius: 30px;
-      font-size: 12.5px;
+      font-size: 13px;
       font-weight: 600;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-      z-index: 2000;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      z-index: 10000;
       display: none;
+      text-align: center;
+      max-width: 90vw;
     }
     /* Modal Image Preview (Zalo / Mobile Save Guide) */
     .img-modal-overlay {
@@ -560,15 +562,15 @@
 
       <!-- Zalo specific guide box -->
       <div id="zalo-guide-box" style="display:none;padding:14px 16px;background:#FFFBEB;border-bottom:1px solid #FEF3C7;text-align:left;">
-        <div style="font-weight:700;color:#92400E;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-          <span>ℹ️</span> Đang mở trong Zalo
+        <div style="font-weight:700;color:#92400E;font-size:13.5px;display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+          <span>📱</span> Hướng dẫn lưu ảnh trong Zalo
         </div>
-        <p style="font-size:12px;color:#78350F;line-height:1.45;margin-bottom:10px;">
-          Trình duyệt Zalo hạn chế tải ảnh trực tiếp về máy. Để lưu ảnh vé vào Thư viện ảnh:
-        </p>
-        <div style="background:#FFFFFF;border:1px solid #FCD34D;border-radius:10px;padding:10px 12px;font-size:12px;color:#1E293B;line-height:1.5;">
-          <strong>Bước 1:</strong> Bấm nút <strong>[ ••• ]</strong> ở góc trên bên phải màn hình Zalo.<br>
-          <strong>Bước 2:</strong> Chọn <strong>"Mở bằng trình duyệt"</strong> (Safari / Chrome).<br>
+        <div style="background:#FFFFFF;border:1px solid #FCD34D;border-radius:10px;padding:10px 12px;font-size:12.5px;color:#1E293B;line-height:1.6;">
+          <strong>Cách 1 (Nhanh nhất):</strong><br>
+          👉 <strong>Chạm và giữ tay vào ảnh bên dưới 1–2 giây</strong> ➔ Chọn <strong>"Lưu hình ảnh"</strong>.<br><br>
+          <strong>Cách 2 (Mở bằng Safari để lưu vào Album):</strong><br>
+          1. Bấm nút <strong>"Copy link mở Safari"</strong> bên dưới.<br>
+          2. Bấm nút <strong>[ ••• ]</strong> ở góc trên bên phải màn hình Zalo ➔ Chọn <strong>"Mở bằng trình duyệt"</strong> (Safari).<br>
           👉 Trên Safari, nút <strong>Lưu ảnh</strong> sẽ lưu thẳng vào <strong>Album ảnh</strong>!
         </div>
       </div>
@@ -582,11 +584,11 @@
       </div>
 
       <div class="img-modal-footer">
-        <button id="btn-modal-open-img" class="btn-action btn-save-img" style="flex:1;font-size:12.5px;padding:11px 12px;">
-          💾 Xem/Tải ảnh nét cao
-        </button>
-        <button id="btn-modal-copy-link" class="btn-action btn-copy-info" style="flex:1;font-size:12.5px;padding:11px 12px;background:#E2E8F0;color:#334155;">
+        <button id="btn-modal-copy-link" class="btn-action btn-save-img" style="flex:1.2;font-size:12.5px;padding:11px 10px;">
           🔗 Copy link mở Safari
+        </button>
+        <button id="btn-modal-close-guide" class="btn-action btn-copy-info" style="flex:0.8;font-size:12.5px;padding:11px 10px;background:#E2E8F0;color:#334155;">
+          Đóng
         </button>
       </div>
     </div>
@@ -905,7 +907,7 @@
     const btnModalImgClose = document.getElementById('btn-modal-img-close');
     const zaloGuideBox = document.getElementById('zalo-guide-box');
     const standardModalGuide = document.getElementById('standard-modal-guide');
-    const btnModalOpenImg = document.getElementById('btn-modal-open-img');
+    const btnModalCloseGuide = document.getElementById('btn-modal-close-guide');
     const btnModalCopyLink = document.getElementById('btn-modal-copy-link');
 
     let currentCardCanvas = null;
@@ -925,6 +927,7 @@
     }
 
     if (btnModalImgClose) btnModalImgClose.addEventListener('click', closeImgModal);
+    if (btnModalCloseGuide) btnModalCloseGuide.addEventListener('click', closeImgModal);
     if (imgModalOverlay) {
       imgModalOverlay.addEventListener('click', e => {
         if (e.target === imgModalOverlay) closeImgModal();
@@ -933,30 +936,42 @@
 
     if (btnModalCopyLink) {
       btnModalCopyLink.addEventListener('click', () => {
-        navigator.clipboard.writeText(window.location.href).then(() => {
-          showToast('🔗 Đã copy link vé! Mở Safari để lưu vào Album.');
-        }).catch(() => {
-          showToast('⚠️ Không thể sao chép link');
-        });
-      });
-    }
+        const urlToCopy = window.location.href;
+        const onCopied = () => {
+          btnModalCopyLink.innerHTML = '✅ ĐÃ COPY LINK VÉ!';
+          btnModalCopyLink.style.background = '#10B981';
+          btnModalCopyLink.style.color = '#FFFFFF';
+          showToast('🔗 Đã copy link vé! Bấm [ ••• ] góc trên Zalo ➔ Mở bằng Safari');
+          setTimeout(() => {
+            btnModalCopyLink.innerHTML = '🔗 Copy link mở Safari';
+            btnModalCopyLink.style.background = '';
+            btnModalCopyLink.style.color = '';
+          }, 3500);
+        };
 
-    if (btnModalOpenImg) {
-      btnModalOpenImg.addEventListener('click', () => {
-        if (!currentCardDataUrl) return;
-        // Open image directly in new tab or navigate so Zalo / mobile browser allows tap-and-hold save
-        const win = window.open('');
-        if (win) {
-          win.document.write('<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Vé Điện Tử - Simple Travel</title></head><body style="margin:0;background:#0F172A;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:12px;box-sizing:border-box;"><div style="color:#F8FAFC;font-size:13px;font-family:sans-serif;margin-bottom:12px;text-align:center;">👆 <strong>Chạm và giữ vào ảnh 1-2 giây</strong> để Lưu vào Thư viện ảnh</div><img src="' + currentCardDataUrl + '" style="max-width:100%;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.6);display:block;margin:0 auto;" /></body></html>');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(urlToCopy).then(onCopied).catch(() => {
+            const ta = document.createElement('textarea');
+            ta.value = urlToCopy;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            onCopied();
+          });
         } else {
-          window.location.href = currentCardDataUrl;
+          const ta = document.createElement('textarea');
+          ta.value = urlToCopy;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          onCopied();
         }
-      });
-    }
-
-    if (imgModalPreview) {
-      imgModalPreview.addEventListener('click', () => {
-        if (btnModalOpenImg) btnModalOpenImg.click();
       });
     }
 
