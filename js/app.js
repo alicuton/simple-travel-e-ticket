@@ -55,7 +55,7 @@ const DEFAULT_LUUY_TEMPLATES = [
 <p>🌍 <strong>Foreign Citizens:</strong> Original valid Passport &amp; required Visas/Entry permits.</p>
 <p>🇻🇳 <strong>Vietnamese Citizens:</strong> National ID (CCCD) / Passport / VNeID Level 2. Children: Original Birth Certificate.</p>
 <p>🤰 <strong>Expectant Mothers:</strong> Please notify the booking agent prior to flight confirmation.</p>
-<p>📞 <strong>24/7 Support:</strong> (+84) 0768.188.224 - <strong>Email:</strong> booking@thesimple.media</p>
+<p>📞 <strong>Support:</strong> (+84) 0768.188.224 - <strong>Email:</strong> booking@thesimple.media</p>
 <p style="color:#f39c12;text-align:center;">✨ Wish you a safe, smooth and pleasant flight ✨</p>`
   },
   {
@@ -500,7 +500,12 @@ function extractTicketData(doc) {
   const count = Math.max(fnRows.length, stTimes.length, 1);
   for (let i = 0; i < count; i++) {
     const fn = fnRows[i] && fnRows[i].children[1] ? fnRows[i].children[1].textContent.trim() : '';
-    const fc = fcRows[i] && fcRows[i].children[1] ? fcRows[i].children[1].textContent.trim().replace(/^J\d+_/, '') : '';
+    const fcRaw = fcRows[i] && fcRows[i].children[1] ? fcRows[i].children[1].textContent.trim() : '';
+    let fc = fcRaw;
+    if (fcRaw.includes(' - ')) {
+      fc = fcRaw.split(' - ').slice(1).join(' - ').trim();
+    }
+    if (!fc) fc = fcRaw;
     const hb = hbRows[i] && hbRows[i].children[1] ? hbRows[i].children[1].textContent.trim() : '';
     const ab = abRows[i] && abRows[i].children[1] ? abRows[i].children[1].textContent.trim() : '';
 
@@ -553,8 +558,28 @@ function extractTicketData(doc) {
     const t = typeEl ? typeEl.textContent.trim() : '';
     const tk = ticketEl ? ticketEl.textContent.trim() : '';
 
+    // Extract services for this passenger
+    const services = [];
+    const srvRows = Array.from(pr.querySelectorAll('tr[id^="eTktPassengerServiceInfo"]'));
+    srvRows.forEach(sr => {
+      const typeEl = sr.querySelector('.be-service-type');
+      const nameEl = sr.querySelector('.be-service-name');
+      const routeEl = sr.querySelector('.be-service-route');
+      const clean = el => el ? el.textContent.replace(/<[^>]+>/g, '').replace(/:$/, '').trim() : '';
+      const sType = clean(typeEl);
+      const sName = clean(nameEl);
+      const sRoute = clean(routeEl);
+      if (sName) {
+        services.push({
+          type: sType || 'Dịch vụ',
+          name: sName,
+          route: sRoute
+        });
+      }
+    });
+
     if (n) {
-      passengers.push({ n, g, t, tk });
+      passengers.push({ n, g, t, tk, services });
     }
   });
 
@@ -585,14 +610,16 @@ function generateMobileTicketUrl(ticketData) {
     const ad = (f.ad && f.ad !== f.dd) ? f.ad.replace(/^(Thứ [^,]+|Chủ Nhật),\s*/i, '') : '';
     const hb = (f.hb && f.hb !== '07kg' && f.hb !== '7kg') ? f.hb : '';
     const ab = f.ab || '';
-    return [fn, from, to, dt, dd, at, ad, hb, ab].join(',');
+    const fc = f.fc || '';
+    return [fn, from, to, dt, dd, at, ad, hb, ab, fc].join(',');
   }).join(';');
   const pxs = (ticketData.px || []).map(p => {
     const n = p.n || '';
     const g = p.g || '';
     const t = (p.t && p.t !== 'Người lớn' && p.t !== 'Adult') ? p.t : '';
     const tk = p.tk || '';
-    return [n, g, t, tk].join(',');
+    const srvs = (p.services || []).map(s => [s.type || '', s.name || '', s.route || ''].join('~')).join('^');
+    return [n, g, t, tk, srvs].join(',');
   }).join(';');
   const compact = 'v2:' + [p, a, c, g, fls, pxs].join('|');
 
@@ -804,13 +831,6 @@ function openMobileQRModal() {
   const ticketData = extractTicketData(iDoc);
   state.ticketData = ticketData;
   state.mobileUrl = generateMobileTicketUrl(ticketData);
-  if (ticketData && ticketData.p) {
-    const logoSrc = state.airlineLogo || state.originalAirlineLogo;
-    if (logoSrc) {
-      try { localStorage.setItem('st_airline_logo_' + ticketData.p, logoSrc); } catch(e) {}
-    }
-  }
-
   mobileUrlInput.value = state.mobileUrl;
 
   qrCodeContainer.innerHTML = '';
@@ -1137,11 +1157,6 @@ async function loadFile(file) {
     applyColor(state.themeColor);
     showLoading(false);
     showToast('✅ Đã tải file thành công!', 'success');
-    const logoSrc = state.airlineLogo || state.originalAirlineLogo;
-    const pnr = state.fileName.replace(/[^A-Z0-9]/gi, '').slice(0, 6);
-    if (logoSrc && pnr) {
-      try { localStorage.setItem('st_airline_logo_' + pnr, logoSrc); } catch(e) {}
-    }
   };
   reader.readAsText(file, 'UTF-8');
 }
@@ -2019,9 +2034,6 @@ function saveTicketToHistory() {
 
   try {
     localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
-    if (logoSrc) {
-      localStorage.setItem('st_airline_logo_' + pnr, logoSrc);
-    }
   } catch (e) {
     console.warn('LocalStorage save history error:', e);
   }

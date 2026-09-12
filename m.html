@@ -66,24 +66,14 @@
     .airline-badge {
       display: flex;
       align-items: center;
-      justify-content: center;
+      gap: 6px;
       background: #F8FAFC;
       border: 1px solid #E2E8F0;
       border-radius: 8px;
-      padding: 4px 8px;
-      min-height: 28px;
-      max-height: 38px;
-    }
-    .airline-badge img, .airline-logo-img {
-      max-height: 26px;
-      max-width: 120px;
-      width: auto;
-      height: auto;
-      object-fit: contain;
-      display: block;
+      padding: 5px 12px;
     }
     .airline-badge span {
-      font-size: 11px;
+      font-size: 11.5px;
       font-weight: 700;
       color: #334155;
     }
@@ -503,7 +493,6 @@
       <div class="ticket-header">
         <img class="ticket-logo" id="ticket-logo" src="" alt="Simple Travel">
         <div class="airline-badge" id="airline-badge">
-          <img id="airline-logo-img" class="airline-logo-img" src="" alt="Logo hãng" style="display:none;">
           <span id="airline-name">VIETJET AIR</span>
         </div>
       </div>
@@ -525,7 +514,7 @@
 
       <!-- Footer -->
       <div class="ticket-footer">
-        <div class="hotline" id="hotline-text">📞 Hotline 24/7: 0768.188.224 • booking@thesimple.media</div>
+        <div class="hotline" id="hotline-text">📞 Hotline: 0768.188.224 • booking@thesimple.media</div>
         <div class="wish">✨ Chúc Quý khách có chuyến bay an toàn & thuận lợi ✨</div>
       </div>
     </div>
@@ -605,18 +594,29 @@
               arrTime: f[5] || '',
               arrDate: formatVNDate(f[6] || f[4] || ''),
               carryOn: f[7] || '07kg',
-              baggage: f[8] || ''
+              baggage: f[8] || '',
+              ticketClass: f[9] || 'ECO'
             };
           }) : [];
 
           const passengers = passengersStr ? passengersStr.split(';').map(pStr => {
             const p = pStr.split(',');
+            const srvStr = p[4] || '';
+            const services = srvStr ? srvStr.split('^').map(sItem => {
+              const sParts = sItem.split('~');
+              return {
+                type: sParts[0] || 'Dịch vụ',
+                name: sParts[1] || '',
+                route: sParts[2] || ''
+              };
+            }).filter(s => s.name) : [];
+
             return {
               name: p[0] || '',
               gender: p[1] || '',
               type: p[2] || 'Người lớn',
               ticketNum: p[3] || '',
-              services: []
+              services: services
             };
           }) : [];
 
@@ -767,71 +767,32 @@
     }
 
     // Airline Logo Resolver (LocalStorage from uploaded ticket or crisp vector SVG)
-    function getAirlineLogo(airlineName, pnr, flights) {
-      try {
-        if (pnr) {
-          const cached = localStorage.getItem('st_airline_logo_' + pnr);
-          if (cached) return cached;
-        }
-        if (airlineName) {
-          const cachedAir = localStorage.getItem('st_airline_logo_' + airlineName.trim());
-          if (cachedAir) return cachedAir;
-        }
-      } catch(e) {}
-
-      const air = (airlineName || '').toLowerCase();
-      const fn = (flights && flights.length > 0 && flights[0].flightNum) ? flights[0].flightNum.toUpperCase() : '';
-
-      // 1. Vietjet Air
-      if (air.includes('vietjet') || fn.startsWith('VJ')) {
-        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 140 32" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="vjW" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#EE1C25"/><stop offset="100%" stop-color="#C4161E"/></linearGradient></defs><path d="M6 24 C10 18, 16 10, 26 6 C20 12, 14 19, 11 26 Z" fill="#FFCC00"/><path d="M2 26 C6 18, 14 8, 28 4 C20 12, 12 21, 8 28 Z" fill="url(#vjW)"/><circle cx="28" cy="4" r="2" fill="#FFCC00"/><text x="32" y="21" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="900" font-style="italic" font-size="16" fill="#EE1C25" letter-spacing="-0.5">vietjet</text><text x="96" y="21" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="900" font-style="italic" font-size="16" fill="#FF9900" letter-spacing="-0.5">Air</text></svg>');
-      }
-
-      // 2. Vietnam Airlines
-      if (air.includes('vietnam') || fn.startsWith('VN')) {
-        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 2) scale(0.75)"><path d="M16 2 C13 10, 13 22, 16 32 C19 22, 19 10, 16 2 Z" fill="#D4A843"/><path d="M15 7 C8 13, 7 24, 13 32 C11 23, 11 14, 15 7 Z" fill="#CEA052"/><path d="M17 7 C24 13, 25 24, 19 32 C21 23, 21 14, 17 7 Z" fill="#CEA052"/><path d="M13 14 C4 18, 2 27, 10 32 C6 26, 8 19, 13 14 Z" fill="#BF9035"/><path d="M19 14 C28 18, 30 27, 22 32 C26 26, 24 19, 19 14 Z" fill="#BF9035"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="9" fill="#002C5F" letter-spacing="0.5">VIETNAM</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8.5" fill="#002C5F" letter-spacing="1">AIRLINES</text></svg>');
-      }
-
-      // 3. Bamboo Airways
-      if (air.includes('bamboo') || fn.startsWith('QH')) {
-        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 3) scale(0.75)"><path d="M18 28 C18 16, 10 6, 2 2 C8 10, 12 18, 14 28 Z" fill="#00843D"/><path d="M18 28 C20 18, 24 10, 32 4 C28 12, 24 20, 20 28 Z" fill="#005B2B"/><path d="M18 28 C19 14, 25 4, 30 0 C24 8, 20 18, 18 28 Z" fill="#0E2B4C"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="10" fill="#00843D" letter-spacing="0.5">BAMBOO</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8" fill="#0E2B4C" letter-spacing="1.2">AIRWAYS</text></svg>');
-      }
-
-      // 4. Pacific Airlines
-      if (air.includes('pacific') || fn.startsWith('BL')) {
-        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 4) scale(0.75)"><path d="M4 22 L22 4 C25 2, 28 4, 26 8 L16 22 Z" fill="#FF5B00"/><path d="M14 22 L28 10 C30 8, 32 10, 30 14 L22 22 Z" fill="#00205B"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="9.5" fill="#00205B" letter-spacing="0.2">PACIFIC</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8" fill="#FF5B00" letter-spacing="1">AIRLINES</text></svg>');
-      }
-
-      // 5. Vietravel Airlines
-      if (air.includes('vietravel') || fn.startsWith('VU')) {
-        return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg viewBox="0 0 145 32" xmlns="http://www.w3.org/2000/svg"><g transform="translate(3, 4) scale(0.75)"><path d="M2 22 C8 14, 16 6, 28 2 C20 10, 12 18, 6 24 Z" fill="#FFCB05"/><path d="M10 22 C16 16, 22 10, 30 6 C24 12, 18 18, 14 24 Z" fill="#003366"/></g><text x="31" y="15" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="800" font-size="9.5" fill="#003366" letter-spacing="0.2">VIETRAVEL</text><text x="31" y="25" font-family="-apple-system,BlinkMacSystemFont,\'Inter\',sans-serif" font-weight="700" font-size="8" fill="#FFCB05" letter-spacing="1">AIRLINES</text></svg>');
-      }
-
-      return null;
-    }
-
     // Populate Brand & PNR
     document.getElementById('ticket-logo').src = LOGO_BASE64;
+    document.getElementById('airline-name').textContent = data.airline || 'VIETJET AIR';
     document.getElementById('pnr-code').textContent = data.pnr || 'SAQ68D';
-
-    const airlineLogoSrc = getAirlineLogo(data.airline, data.pnr, data.flights);
-    const airlineLogoImg = document.getElementById('airline-logo-img');
-    const airlineNameSpan = document.getElementById('airline-name');
-
-    if (airlineLogoSrc) {
-      airlineLogoImg.src = airlineLogoSrc;
-      airlineLogoImg.style.display = 'block';
-      airlineNameSpan.style.display = 'none';
-    } else {
-      airlineLogoImg.style.display = 'none';
-      airlineNameSpan.textContent = data.airline || 'VIETJET AIR';
-      airlineNameSpan.style.display = 'inline';
-    }
 
     // Populate Flights
     const flCont = document.getElementById('flights-container');
     flCont.innerHTML = '';
     (data.flights || []).forEach(f => {
+      const flightRoute = (f.depCode + '-' + f.arrCode).toUpperCase();
+      const pBagList = [];
+      (data.passengers || []).forEach(p => {
+        (p.services || []).forEach(s => {
+          const isBag = (s.type && s.type.toLowerCase().includes('hành lý')) || (s.name && /bag|\d+\s*kg/i.test(s.name));
+          const sRoute = (s.route || '').toUpperCase();
+          if (isBag && (!sRoute || sRoute === flightRoute || (sRoute.includes(f.depCode) && sRoute.includes(f.arrCode)))) {
+            pBagList.push(s.name + (data.passengers.length > 1 ? ' (' + p.name.split(' ').pop() + ')' : ''));
+          }
+        });
+      });
+      const baggageHtml = f.baggage 
+        ? `<span>🧳 Ký gửi: <strong>${f.baggage}</strong></span>` 
+        : (pBagList.length > 0 
+            ? `<span>🧳 Ký gửi: <strong>${pBagList.join(', ')}</strong></span>` 
+            : '<span style="color:#94A3B8;">Ký gửi: Không có</span>');
+
       const card = document.createElement('div');
       card.className = 'flight-card';
       card.innerHTML = `
@@ -846,7 +807,7 @@
           </div>
           <div class="meta-row baggage-row">
             <span>🧳 Xách tay: <strong>${f.carryOn || '07kg'}</strong></span>
-            ${f.baggage ? `<span>🧳 Ký gửi: <strong>${f.baggage}</strong></span>` : '<span style="color:#94A3B8;">Ký gửi: Không có</span>'}
+            ${baggageHtml}
           </div>
         </div>
         <div class="flight-route-grid">
