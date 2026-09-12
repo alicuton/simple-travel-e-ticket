@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>E-Ticket Mobile 9:16 — Simple Travel</title>
+  <title>E-Ticket Mobile — Simple Travel</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -40,7 +40,7 @@
       max-width: 440px;
       margin: 0 auto;
     }
-    /* The 9:16 Ticket Card */
+    /* The Ticket Card */
     .ticket-card {
       width: 100%;
       background: var(--bg-card);
@@ -409,7 +409,7 @@
 <body>
 
   <div class="mobile-shell">
-    <!-- 9:16 Card to capture -->
+    <!-- Card to capture -->
     <div id="ticket-card" class="ticket-card">
       <!-- Header -->
       <div class="ticket-header">
@@ -455,7 +455,7 @@
   <div class="bottom-bar">
     <button class="btn-action btn-save-img" id="btn-save-img">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Lưu ảnh 9:16
+      Lưu ảnh
     </button>
     <button class="btn-action btn-copy-info" id="btn-copy-info">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -700,11 +700,11 @@
       });
     }
 
-    // Action: Save Image 9:16
+    // Action: Save Image
     document.getElementById('btn-save-img').addEventListener('click', async () => {
-      showToast('⏳ Đang tạo ảnh 9:16 độ nét cao...');
+      showToast('⏳ Đang tạo ảnh độ nét cao...');
       try {
-        const card = document.getElementById('ticket-card');
+        const card = document.getElementById('ticket-card') || document.getElementById('ticketCard');
         const canvas = await html2canvas(card, {
           scale: 2.5,
           useCORS: true,
@@ -715,7 +715,7 @@
         a.href = canvas.toDataURL('image/png');
         a.download = 'eticket_mobile_' + (data.pnr || 'ticket') + '.png';
         a.click();
-        showToast('✅ Đã tải ảnh vé 9:16 về máy!');
+        showToast('✅ Đã tải ảnh vé về máy!');
       } catch (err) {
         console.error(err);
         showToast('❌ Lỗi tạo ảnh: ' + err.message);
@@ -724,21 +724,24 @@
 
     // Action: Copy text
     document.getElementById('btn-copy-info').addEventListener('click', () => {
-      let txt = '✈️ VÉ ĐIỆN TỬ SIMPLE TRAVEL\n';
+      let txt = '✈️ VÉ ĐIỆN TỬ - SIMPLE TRAVEL\n';
       txt += 'Mã đặt chỗ: ' + (data.pnr || '') + '\n';
       txt += 'Hãng: ' + (data.airline || '') + '\n\n';
       (data.flights || []).forEach(f => {
-        txt += '🛫 ' + (f.title || (f.depCode + ' - ' + f.arrCode)) + ' (' + (f.flightNum || '') + ')\n';
-        txt += '   ' + f.depTime + ' ' + f.depCode + ' (' + f.depDate + ')\n';
-        txt += '   ' + f.arrTime + ' ' + f.arrCode + ' (' + f.arrDate + ')\n\n';
+        txt += '🛫 ' + (f.depDate || '') + '\n';
+        txt += '   ' + (f.flightNum || '') + ' ' + (f.depCode || '') + ' - ' + (f.arrCode || '') + ' ' + (f.depTime || '') + ' ' + (f.arrTime || '');
+        if (f.arrDate && f.depDate && f.arrDate !== f.depDate) {
+          txt += ' (+1 ngày: ' + f.arrDate + ')';
+        }
+        txt += '\n\n';
       });
       txt += 'Khách bay:\n';
       (data.passengers || []).forEach((p, idx) => {
-        txt += (idx+1) + '. ' + p.name + ' (' + (p.type || '') + ' / ' + (p.gender || '') + ')\n';
+        const tag = (p.type || '') + (p.type && p.gender ? ' / ' : '') + (p.gender || '');
+        txt += (idx + 1) + '. ' + p.name + (tag ? ' (' + tag + ')' : '') + '\n';
       });
-      txt += '\nLink xem vé: ' + window.location.href;
 
-      navigator.clipboard.writeText(txt).then(() => {
+      navigator.clipboard.writeText(txt.trim()).then(() => {
         showToast('📋 Đã sao chép tóm tắt vé!');
       }).catch(() => {
         showToast('⚠️ Không sao chép được');

@@ -250,9 +250,9 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Copy ảnh
         </button>
-        <button class="btn btn--mobile-qr" id="btn-mobile-qr" title="Xuất vé định dạng 9:16 cho Mobile & Tạo mã QR">
+        <button class="btn btn--mobile-qr" id="btn-mobile-qr" title="Xuất vé Mobile & Tạo mã QR">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          📱 Vé Mobile 9:16 &amp; QR
+          📱 Vé Mobile &amp; QR
         </button>
         <span class="toolbar-divider"></span>
         <button class="btn btn--edit" id="btn-toggle-edit">
@@ -304,15 +304,15 @@
     <button class="edit-toolbar__btn edit-toolbar__btn--done" data-cmd="done">✓ Xong</button>
   </div>
 
-  <!-- ===== MODAL: MOBILE 9:16 & QR CODE ===== -->
+  <!-- ===== MODAL: MOBILE & QR CODE ===== -->
   <div class="modal-backdrop" id="modal-mobile-qr" style="display:none;">
     <div class="modal-card">
       <div class="modal-header">
         <div class="modal-title">
           <span style="font-size: 22px;">📱</span>
           <div>
-            <h3>Vé Mobile 9:16 &amp; Mã QR</h3>
-            <p>Khách quét mã mở vé chuẩn điện thoại hoặc gửi trực tiếp file ảnh 9:16</p>
+            <h3>Vé Mobile &amp; Mã QR</h3>
+            <p>Khách quét mã mở vé chuẩn điện thoại hoặc gửi trực tiếp file ảnh</p>
           </div>
         </div>
         <button class="modal-close" id="btn-modal-close" title="Đóng">✕</button>
@@ -324,7 +324,7 @@
             <div class="phone-speaker"></div>
             <iframe id="mobile-preview-iframe" class="phone-screen" sandbox="allow-same-origin allow-scripts allow-modals"></iframe>
           </div>
-          <span class="phone-label">Mô phỏng hiển thị trên smartphone (9:16)</span>
+          <span class="phone-label">Mô phỏng hiển thị trên smartphone</span>
         </div>
 
         <!-- Right: Actions & QR Code -->
@@ -352,21 +352,24 @@
               <input type="text" id="mobile-url-input" readonly class="share-link-input" spellcheck="false">
               <button class="btn btn--primary btn--sm" id="btn-copy-mobile-url">📋 Sao chép link</button>
             </div>
+            <button class="btn btn--outline btn--sm" id="btn-copy-flight-summary" style="width:100%;margin-top:8px;">
+              📋 Copy tóm tắt hành trình (gửi Zalo)
+            </button>
           </div>
 
-          <!-- 9:16 Export Buttons -->
+          <!-- Mobile Export Buttons -->
           <div class="mobile-export-card">
-            <label class="ctrl-label">Xuất ảnh vé dọc 9:16 (Full HD 1080×1920)</label>
+            <label class="ctrl-label">Xuất ảnh vé điện thoại (Full HD 1080×1920)</label>
             <div class="mobile-export-btns">
               <button class="btn btn--primary" id="btn-download-mobile-img" style="flex:1;">
-                📸 Tải ảnh Vé Mobile (9:16)
+                📸 Tải ảnh Vé Mobile
               </button>
               <button class="btn btn--copy" id="btn-copy-mobile-img">
                 📋 Copy ảnh Mobile
               </button>
             </div>
             <p style="font-size:11px;color:var(--brand-muted);margin-top:6px;line-height:1.4;">
-              💡 File ảnh 9:16 được tối ưu tỉ lệ vàng cho màn hình điện thoại, gửi qua Zalo / Messenger đọc rất rõ ràng và sắc nét.
+              💡 File ảnh được tối ưu chuẩn cho màn hình điện thoại, gửi qua Zalo / Messenger đọc rất rõ ràng và sắc nét.
             </p>
           </div>
 
@@ -378,7 +381,7 @@
             </label>
             <div>
               <div style="font-size:13px;font-weight:600;color:var(--brand-dark);">Hiển thị mã QR trên vé A4</div>
-              <div style="font-size:11px;color:var(--brand-muted);">Tự động chèn mã QR vào vé in / xuất PDF</div>
+              <div style="font-size:11px;color:var(--brand-muted);">Tự động chèn mã QR vào phần đầu vé in / xuất PDF</div>
             </div>
           </div>
         </div>
@@ -389,6 +392,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=3.4"></script>
+  <script src="js/app.js?v=3.5"></script>
 </body>
 </html>
