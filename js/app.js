@@ -565,7 +565,7 @@ function extractTicketData(doc) {
       const typeEl = sr.querySelector('.be-service-type');
       const nameEl = sr.querySelector('.be-service-name');
       const routeEl = sr.querySelector('.be-service-route');
-      const clean = el => el ? el.textContent.replace(/<[^>]+>/g, '').replace(/:$/, '').trim() : '';
+      const clean = el => el ? el.textContent.replace(/<[^>]+>/g, '').replace(/[:\s]+$/, '').trim() : '';
       const sType = clean(typeEl);
       const sName = clean(nameEl);
       const sRoute = clean(routeEl);

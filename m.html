@@ -266,29 +266,27 @@
       font-weight: 600;
       color: #475569;
     }
-    .service-badges {
-      margin-top: 6px;
+    .passenger-service-row {
+      margin-top: 4px;
       display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-    }
-    .badge-service {
-      background: #FEF3C7;
-      color: #92400E;
-      border-radius: 4px;
-      padding: 2px 7px;
-      font-size: 10px;
-      font-weight: 700;
-      display: inline-flex;
       align-items: center;
-      gap: 3px;
+      justify-content: space-between;
+      font-size: 11px;
+      color: #64748B;
+      gap: 8px;
     }
-    .badge-service-route {
-      background: var(--sp);
-      color: #FFFFFF;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 9px;
+    .passenger-service-desc {
+      color: #334155;
+      text-align: right;
+    }
+    .passenger-service-desc strong {
+      color: #0F172A;
+      font-weight: 600;
+    }
+    .passenger-service-desc .service-route {
+      color: #64748B;
+      font-weight: normal;
+      margin-left: 3px;
     }
     /* QR Section on Card */
     .qr-section {
@@ -605,9 +603,9 @@
             const services = srvStr ? srvStr.split('^').map(sItem => {
               const sParts = sItem.split('~');
               return {
-                type: sParts[0] || 'Dịch vụ',
-                name: sParts[1] || '',
-                route: sParts[2] || ''
+                type: (sParts[0] || 'Dịch vụ').replace(/[:\s]+$/, '').trim(),
+                name: (sParts[1] || '').trim(),
+                route: (sParts[2] || '').trim()
               };
             }).filter(s => s.name) : [];
 
@@ -776,22 +774,28 @@
     const flCont = document.getElementById('flights-container');
     flCont.innerHTML = '';
     (data.flights || []).forEach(f => {
-      const flightRoute = (f.depCode + '-' + f.arrCode).toUpperCase();
+      const flightRouteClean = ((f.depCode || '') + (f.arrCode || '')).replace(/[^A-Z0-9]/gi, '').toUpperCase();
       const pBagList = [];
       (data.passengers || []).forEach(p => {
         (p.services || []).forEach(s => {
           const isBag = (s.type && s.type.toLowerCase().includes('hành lý')) || (s.name && /bag|\d+\s*kg/i.test(s.name));
-          const sRoute = (s.route || '').toUpperCase();
-          if (isBag && (!sRoute || sRoute === flightRoute || (sRoute.includes(f.depCode) && sRoute.includes(f.arrCode)))) {
+          const sRouteClean = (s.route || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+          const routeMatch = sRouteClean ? (sRouteClean === flightRouteClean) : (data.flights.length === 1);
+          if (isBag && routeMatch) {
             pBagList.push(s.name + (data.passengers.length > 1 ? ' (' + p.name.split(' ').pop() + ')' : ''));
           }
         });
       });
-      const baggageHtml = f.baggage 
-        ? `<span>🧳 Ký gửi: <strong>${f.baggage}</strong></span>` 
-        : (pBagList.length > 0 
-            ? `<span>🧳 Ký gửi: <strong>${pBagList.join(', ')}</strong></span>` 
-            : '<span style="color:#94A3B8;">Ký gửi: Không có</span>');
+      let baggageHtml = '';
+      if (f.baggage && pBagList.length > 0) {
+        baggageHtml = `<span>🧳 Ký gửi: <strong>${f.baggage} + ${pBagList.join(', ')}</strong></span>`;
+      } else if (f.baggage) {
+        baggageHtml = `<span>🧳 Ký gửi: <strong>${f.baggage}</strong></span>`;
+      } else if (pBagList.length > 0) {
+        baggageHtml = `<span>🧳 Ký gửi: <strong>${pBagList.join(', ')}</strong></span>`;
+      } else {
+        baggageHtml = '<span style="color:#94A3B8;">Ký gửi: Không có</span>';
+      }
 
       const card = document.createElement('div');
       card.className = 'flight-card';
@@ -852,13 +856,17 @@
             </div>
             ${p.ticketNum ? '<div class="passenger-sub"><span>Vé/Receipt:</span><span class="passenger-ticket-no">' + p.ticketNum + '</span></div>' : ''}
             ${p.services && p.services.length > 0 ? `
-              <div class="service-badges">
-                ${p.services.map(s => `
-                  <span class="badge-service">
-                    ${s.type ? s.type + ': ' : ''}<strong>${s.name}</strong>
-                    ${s.route ? '<span class="badge-service-route">' + s.route + '</span>' : ''}
-                  </span>
-                `).join('')}
+              <div class="passenger-services">
+                ${p.services.map(s => {
+                  const sType = (s.type || 'Dịch vụ').replace(/[:\s]+$/, '').trim();
+                  const sRoute = s.route ? ` <span class="service-route">(${s.route})</span>` : '';
+                  return `
+                    <div class="passenger-service-row">
+                      <span>${sType}:</span>
+                      <span class="passenger-service-desc"><strong>${s.name}</strong>${sRoute}</span>
+                    </div>
+                  `;
+                }).join('')}
               </div>
             ` : ''}
           </div>
