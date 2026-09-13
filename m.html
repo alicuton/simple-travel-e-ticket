@@ -158,7 +158,7 @@
       padding: 14px;
       display: grid;
       grid-template-columns: 1fr auto 1fr;
-      align-items: center;
+      align-items: start;
       gap: 10px;
     }
     .route-node {
@@ -179,6 +179,25 @@
       color: var(--sp-dark);
       margin-top: 2px;
     }
+    .route-terminal {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: #0F172A;
+      background: #F1F5F9;
+      border: 1px solid #E2E8F0;
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 4px;
+      margin: 3px 0 2px;
+      width: fit-content;
+      line-height: 1.35;
+    }
+    .route-node.origin .route-terminal {
+      align-self: flex-start;
+    }
+    .route-node.dest .route-terminal {
+      align-self: flex-end;
+    }
     .route-date {
       font-size: 10.5px;
       color: var(--text-muted);
@@ -190,17 +209,13 @@
       color: #334155;
       margin-top: 3px;
     }
-    .route-terminal {
-      font-size: 10.5px;
-      color: #64748B;
-      margin-top: 1px;
-    }
     .route-mid {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 0 4px;
+      margin-top: 4px;
     }
     .route-plane-icon {
       color: var(--sp);
@@ -783,13 +798,13 @@
           depTime: f.depTime || f.dt || '',
           depCode: f.depCode || f.from || '',
           depDate: f.depDate || f.dd || '',
-          depAirport: f.depAirport || '',
-          depTerminal: f.depTerminal || '',
+          depAirport: f.depAirport || f.dap || '',
+          depTerminal: f.depTerminal || f.dtm || '',
           arrTime: f.arrTime || f.at || '',
           arrCode: f.arrCode || f.to || '',
           arrDate: f.arrDate || f.ad || '',
-          arrAirport: f.arrAirport || '',
-          arrTerminal: f.arrTerminal || ''
+          arrAirport: f.arrAirport || f.aap || '',
+          arrTerminal: f.arrTerminal || f.atm || ''
         })),
         passengers: (d.passengers || d.px || []).map(p => ({
           name: p.name || p.n || '',
@@ -889,9 +904,9 @@
           <div class="route-node origin">
             <div class="route-time">${f.depTime || ''}</div>
             <div class="route-code">${f.depCode || ''}</div>
+            ${f.depTerminal ? '<div class="route-terminal">' + f.depTerminal + '</div>' : ''}
             <div class="route-date">${f.depDate || ''}</div>
             <div class="route-airport">${f.depAirport || ''}</div>
-            ${f.depTerminal ? '<div class="route-terminal">' + f.depTerminal + '</div>' : ''}
           </div>
           <div class="route-mid">
             <span class="route-plane-icon">✈</span>
@@ -900,9 +915,9 @@
           <div class="route-node dest">
             <div class="route-time">${f.arrTime || ''}</div>
             <div class="route-code">${f.arrCode || ''}</div>
+            ${f.arrTerminal ? '<div class="route-terminal">' + f.arrTerminal + '</div>' : ''}
             <div class="route-date">${f.arrDate || ''}</div>
             <div class="route-airport">${f.arrAirport || ''}</div>
-            ${f.arrTerminal ? '<div class="route-terminal">' + f.arrTerminal + '</div>' : ''}
           </div>
         </div>
         ${f.aircraft ? '<div style="padding:6px 14px 10px;font-size:10px;color:#64748B;background:#FFF;border-top:1px dashed #F1F5F9;">Máy bay: <strong>' + f.aircraft + '</strong></div>' : ''}
@@ -1149,12 +1164,11 @@
         card.style.width = prevWidth;
 
         const filename = 'eticket_mobile_' + (data.pnr || 'ticket') + '.png';
-        const dataUrl = canvas.toDataURL('image/png');
+        const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
 
         // 2. On Mobile (Safari, Chrome): Use Web Share API so it can be saved directly to Photos
-        if (isMobile && navigator.share && navigator.canShare) {
+        if (isMobile && navigator.share && navigator.canShare && blob) {
           try {
-            const blob = await new Promise(res => canvas.toBlob(res, 'image/png'));
             const file = new File([blob], filename, { type: 'image/png' });
             if (navigator.canShare({ files: [file] })) {
               await navigator.share({
@@ -1170,11 +1184,15 @@
           }
         }
 
-        // 3. Fallback / Desktop: Direct browser download
+        // 3. Fallback / Desktop: Direct browser blob download
+        const objUrl = blob ? URL.createObjectURL(blob) : canvas.toDataURL('image/png');
         const a = document.createElement('a');
-        a.href = dataUrl;
+        a.href = objUrl;
         a.download = filename;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
+        if (blob) setTimeout(() => URL.revokeObjectURL(objUrl), 15000);
         showToast('✅ Đã tải ảnh vé về máy!');
       } catch (err) {
         console.error(err);

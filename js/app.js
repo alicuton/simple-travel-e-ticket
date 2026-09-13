@@ -164,10 +164,20 @@ const btnSaveBooking        = $('btn-save-booking');
 const modalHistory          = $('modal-history');
 const btnModalHistoryClose  = $('btn-modal-history-close');
 const historySearchInput    = $('history-search-input');
+const btnClearHistorySearch = $('btn-clear-history-search');
 const historySortSelect     = $('history-sort-select');
 const btnClearAllHistory    = $('btn-clear-all-history');
 const btnSyncHistory        = $('btn-sync-history');
 const historyTableContainer = $('history-table-container');
+
+// Image Export Modal DOM
+const modalImagePreview         = $('modal-image-preview');
+const btnImagePreviewClose      = $('btn-image-preview-close');
+const btnImagePreviewShare      = $('btn-image-preview-share');
+const btnImagePreviewDownload   = $('btn-image-preview-download');
+const imagePreviewImg           = $('image-preview-img');
+const imagePreviewTitle         = $('image-preview-title');
+const imagePreviewSubtitle      = $('image-preview-subtitle');
 
 // Airline panel DOM
 const airlineLogoInput       = $('airline-logo-input');
@@ -544,6 +554,18 @@ function extractTicketData(doc) {
         }
       }
 
+      const stTerminal = tbl.querySelector('.be-start-terminal');
+      const dtm = stTerminal ? stTerminal.textContent.trim() : '';
+
+      const etTerminal = tbl.querySelector('.be-end-terminal');
+      const atm = etTerminal ? etTerminal.textContent.trim() : '';
+
+      const stAirport = tbl.querySelector('.be-start-airport');
+      const dap = stAirport ? stAirport.textContent.trim() : '';
+
+      const etAirport = tbl.querySelector('.be-end-airport');
+      const aap = etAirport ? etAirport.textContent.trim() : '';
+
       flights.push({
         fn,
         fc,
@@ -554,7 +576,11 @@ function extractTicketData(doc) {
         at,
         ad,
         hb,
-        ab
+        ab,
+        dtm,
+        atm,
+        dap,
+        aap
       });
     });
   } else {
@@ -568,6 +594,10 @@ function extractTicketData(doc) {
     const sdDates = Array.from(doc.querySelectorAll('.be-start-date'));
     const etTimes = Array.from(doc.querySelectorAll('.be-end-time'));
     const edDates = Array.from(doc.querySelectorAll('.be-end-date'));
+    const stTerminals = Array.from(doc.querySelectorAll('.be-start-terminal'));
+    const etTerminals = Array.from(doc.querySelectorAll('.be-end-terminal'));
+    const stAirports = Array.from(doc.querySelectorAll('.be-start-airport'));
+    const etAirports = Array.from(doc.querySelectorAll('.be-end-airport'));
 
     const count = Math.max(fnRows.length, stTimes.length, 1);
     for (let i = 0; i < count; i++) {
@@ -591,7 +621,11 @@ function extractTicketData(doc) {
       const dd = sdDates[i] ? sdDates[i].textContent.trim() : '';
       const at = etTimes[i] ? etTimes[i].textContent.trim() : '';
       const ad = edDates[i] ? edDates[i].textContent.trim() : '';
-      flights.push({ fn, fc, from, to, dt, dd, at, ad, hb, ab });
+      const dtm = stTerminals[i] ? stTerminals[i].textContent.trim() : '';
+      const atm = etTerminals[i] ? etTerminals[i].textContent.trim() : '';
+      const dap = stAirports[i] ? stAirports[i].textContent.trim() : '';
+      const aap = etAirports[i] ? etAirports[i].textContent.trim() : '';
+      flights.push({ fn, fc, from, to, dt, dd, at, ad, hb, ab, dtm, atm, dap, aap });
     }
   }
 
@@ -941,11 +975,15 @@ function formatFlightSummary(data, customLink = '') {
 
   (data.f || []).forEach(f => {
     txt += '🛫 ' + (f.dd || '') + '\n';
-    txt += '   ' + (f.fn || '') + ' ' + (f.from || '') + ' - ' + (f.to || '') + ' ' + (f.dt || '') + ' ' + (f.at || '');
-    if (f.ad && f.dd && f.ad !== f.dd) {
-      txt += ' (+1 ngày: ' + f.ad + ')';
+    let line = '   ' + (f.fn || '') + ' ' + (f.from || '') + ' - ' + (f.to || '') + ' ' + (f.dt || '') + ' ' + (f.at || '');
+    if (f.dtm || f.atm) {
+      const tInfo = [f.dtm ? (f.from + ': ' + f.dtm) : '', f.atm ? (f.to + ': ' + f.atm) : ''].filter(Boolean).join(' | ');
+      if (tInfo) line += ' (' + tInfo + ')';
     }
-    txt += '\n\n';
+    if (f.ad && f.dd && f.ad !== f.dd) {
+      line += ' (+1 ngày: ' + f.ad + ')';
+    }
+    txt += line + '\n\n';
   });
 
   txt += 'Khách bay:\n';
@@ -978,48 +1016,49 @@ function openMobileQRModal() {
     state.mobileUrl = generateMobileTicketUrl(ticketData);
 
     const pnr = (ticketData.p || '').trim().toUpperCase();
-    
-    // Always use clean branded short URL by default whenever PNR exists!
-    const shortUrl = pnr ? ('https://eticket.thesimple.media/' + pnr) : state.mobileUrl;
-    state.shortUrl = shortUrl;
-    const effectiveUrl = shortUrl;
 
-    if (mobileUrlInput) mobileUrlInput.value = effectiveUrl;
+    // Check if this booking has ALREADY been saved in history
+    const history = getTicketHistory();
+    const existing = history.find(h => h.pnr === pnr);
+    const isSaved = Boolean(existing && (existing.shortUrl || state.shortUrl));
 
     const cloudBadge = $('cloud-link-badge');
     const btnModalSaveCloud = $('btn-modal-save-cloud');
-    if (cloudBadge) {
-      cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Link ngắn: ' + (pnr ? ('/' + pnr) : '') + '</span>';
-    }
-    if (btnModalSaveCloud) {
-      btnModalSaveCloud.innerHTML = '💾 Lưu booking';
-      btnModalSaveCloud.disabled = false;
-      btnModalSaveCloud.style.opacity = '1';
+
+    let effectiveUrl = '';
+
+    if (isSaved) {
+      // Booking already saved: show official short link
+      const shortUrl = (existing && existing.shortUrl) || state.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+      state.shortUrl = shortUrl;
+      effectiveUrl = shortUrl;
+
+      if (cloudBadge) {
+        cloudBadge.innerHTML = '<span style="color:#10B981; font-weight:600;">⚡ Link ngắn chính thức: /' + pnr + '</span>';
+      }
+      if (btnModalSaveCloud) {
+        btnModalSaveCloud.innerHTML = '✅ Đã lưu';
+        btnModalSaveCloud.disabled = false;
+        btnModalSaveCloud.style.opacity = '0.85';
+      }
+    } else {
+      // Booking not saved yet: DO NOT auto-save or upload to cloud! Show self-contained mobile link
+      state.shortUrl = null;
+      effectiveUrl = state.mobileUrl;
+
+      if (cloudBadge) {
+        cloudBadge.innerHTML = '<span style="color:#f59e0b; font-weight:600;">⚠️ Chưa lưu booking (Bấm "Lưu booking" để tạo link /' + (pnr || '...') + ')</span>';
+      }
+      if (btnModalSaveCloud) {
+        btnModalSaveCloud.innerHTML = '💾 Lưu booking';
+        btnModalSaveCloud.disabled = false;
+        btnModalSaveCloud.style.opacity = '1';
+      }
     }
 
-    // Auto-sync ticket data to Upstash cloud in background so the link is immediately live!
-    if (pnr) {
-      saveTicketToHistory();
-      pushTicketToCloud(pnr, ticketData).then(json => {
-        if (json && json.success) {
-          if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Đã kết nối đám mây (/' + pnr + ')</span>';
-          if (btnModalSaveCloud) {
-            btnModalSaveCloud.innerHTML = '✅ Đã lưu';
-            btnModalSaveCloud.style.opacity = '0.7';
-          }
-          const hist = getTicketHistory();
-          const rec = hist.find(h => h.pnr === pnr);
-          if (rec) {
-            rec.shortUrl = shortUrl;
-            localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
-          }
-        }
-      }).catch(err => {
-        console.warn('Background ticket sync:', err);
-      });
-    }
+    if (mobileUrlInput) mobileUrlInput.value = effectiveUrl;
 
-    // Populate flight summary textarea with clean short URL
+    // Populate flight summary textarea with effectiveUrl
     const summaryTxt = formatFlightSummary(ticketData, effectiveUrl);
     if (flightSummaryTextarea) {
       flightSummaryTextarea.value = summaryTxt;
@@ -1127,6 +1166,82 @@ function generateStylizedQRCanvas(pnr, url, themeColor = BRAND_DEFAULT) {
   });
 }
 
+// ─── Universal Image Export & Mobile / iOS Save Handler ──────
+function isMobileOrTouchDevice() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/i.test(ua);
+  return isIOS || isAndroid || window.innerWidth <= 768;
+}
+
+let currentExportBlob = null;
+let currentExportFilename = '';
+let currentExportTitle = '';
+
+function showImageExportModal(canvas, blob, filename, title) {
+  currentExportBlob = blob;
+  currentExportFilename = filename;
+  currentExportTitle = title || 'Ảnh vé Simple Travel';
+
+  if (imagePreviewTitle) imagePreviewTitle.textContent = title || 'Xem & Lưu ảnh';
+  if (imagePreviewSubtitle) imagePreviewSubtitle.textContent = filename;
+
+  if (imagePreviewImg) {
+    if (imagePreviewImg.src && imagePreviewImg.src.startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviewImg.src);
+    }
+    imagePreviewImg.src = URL.createObjectURL(blob);
+  }
+
+  if (modalImagePreview) {
+    modalImagePreview.style.display = 'flex';
+  }
+}
+
+function closeImageExportModal() {
+  if (modalImagePreview) {
+    modalImagePreview.style.display = 'none';
+  }
+  if (imagePreviewImg && imagePreviewImg.src && imagePreviewImg.src.startsWith('blob:')) {
+    URL.revokeObjectURL(imagePreviewImg.src);
+    imagePreviewImg.src = '';
+  }
+  currentExportBlob = null;
+}
+
+async function handleCanvasExport(canvas, filename, title = 'Ảnh vé Simple Travel') {
+  showToast('⏳ Đang chuẩn bị ảnh Full HD...', '');
+  
+  // 1. Convert canvas to Blob (PNG)
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) {
+    showToast('❌ Không thể tạo file ảnh', 'error');
+    return;
+  }
+
+  // 2. On Mobile / iOS devices: Open the Image Viewer & Action Sheet Modal
+  if (isMobileOrTouchDevice()) {
+    showImageExportModal(canvas, blob, filename, title);
+    return;
+  }
+
+  // 3. On Desktop: Direct blob download
+  try {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = objectUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 15000);
+    showToast('✅ Đã tải file ảnh ' + filename + '!', 'success');
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Lỗi tải ảnh: ' + err.message, 'error');
+  }
+}
+
 async function downloadStandaloneQR() {
   const pnr = state.ticketData?.p || 'SimpleTravel';
   const url = (mobileUrlInput ? mobileUrlInput.value : null) || state.shortUrl || state.mobileUrl;
@@ -1135,17 +1250,12 @@ async function downloadStandaloneQR() {
     return;
   }
 
-  showToast('⏳ Đang tạo ảnh mã QR Full HD...', '');
   try {
     const exportCanvas = await generateStylizedQRCanvas(pnr, url, state.themeColor);
-    const link = document.createElement('a');
-    link.download = 'QR_VeMayBay_' + pnr + '.png';
-    link.href = exportCanvas.toDataURL('image/png');
-    link.click();
-    showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
+    await handleCanvasExport(exportCanvas, 'QR_VeMayBay_' + pnr + '.png', 'Mã QR Vé ' + pnr);
   } catch (e) {
     console.error(e);
-    showToast('❌ Lỗi tải mã QR', 'error');
+    showToast('❌ Lỗi tải mã QR: ' + e.message, 'error');
   }
 }
 
@@ -1184,11 +1294,8 @@ async function downloadMobileImage() {
   showLoading(true);
   try {
     const canvas = await captureMobileCard(3);
-    const link = document.createElement('a');
-    link.download = 'Ve_Mobile_' + (state.ticketData?.p || 'SimpleTravel') + '.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    showToast('✅ Đã tải ảnh vé Full HD thành công!', 'success');
+    const pnr = state.ticketData?.p || 'SimpleTravel';
+    await handleCanvasExport(canvas, 'Ve_Mobile_' + pnr + '.png', 'Vé Điện Tử Mobile ' + pnr);
   } catch (err) {
     console.error(err);
     showToast('❌ Lỗi tải ảnh: ' + err.message, 'error');
@@ -1328,9 +1435,11 @@ async function loadFile(file) {
     state.airlineName = state.originalAirlineName;
     airlineNameInput.value = state.originalAirlineName || '';
 
-    // Reset logo custom upload
+    // Reset logo custom upload & urls
     state.airlineLogo = null;
     airlineLogoPreviewRow.style.display = 'none';
+    state.shortUrl = null;
+    state.mobileUrl = null;
 
     // Extract LƯU Ý
     state.luuYOriginal = extractLuuY(state.rawHTML);
@@ -1827,14 +1936,11 @@ async function exportImage() {
   showLoading(true);
   try {
     const canvas = await captureToCanvas();
-    const link = document.createElement('a');
-    link.download = (state.fileName.replace(/\.html?$/i,'') || 'eticket') + '.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-    showToast('✅ Đã tải ảnh PNG thành công (đầy đủ logo & khoảng đệm lề)!', 'success');
+    const filename = (state.fileName.replace(/\.html?$/i,'') || 'eticket') + '.png';
+    await handleCanvasExport(canvas, filename, 'Vé Máy Bay A4 ' + (state.ticketData?.p || ''));
   } catch(err) {
     console.error(err);
-    showToast('❌ Lỗi: ' + err.message, 'error');
+    showToast('❌ Lỗi tải ảnh: ' + err.message, 'error');
   } finally {
     showLoading(false);
   }
@@ -2176,61 +2282,64 @@ if (btnModalSaveCloud) {
       showToast('⚠️ Không tìm thấy mã đặt chỗ (PNR)!', '');
       return;
     }
-    const pnr = data.p;
-    saveTicketToHistory();
+    const pnr = (data.p || '').trim().toUpperCase();
+    saveTicketToHistory({ promptOverwrite: false });
 
     btnModalSaveCloud.disabled = true;
     btnModalSaveCloud.innerHTML = '⏳ Đang lưu...';
     try {
       const json = await pushTicketToCloud(pnr, data);
-      if (json && json.success) {
-        const shortUrl = 'https://eticket.thesimple.media/' + pnr;
-        state.shortUrl = shortUrl;
-        
-        const hist = getTicketHistory();
-        const rec = hist.find(h => h.pnr === pnr);
-        if (rec) {
-          rec.shortUrl = shortUrl;
-          localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
-        }
-
-        if (mobileUrlInput) mobileUrlInput.value = shortUrl;
-        const cloudBadge = $('cloud-link-badge');
-        if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Link ngắn đám mây</span>';
-        btnModalSaveCloud.innerHTML = '✅ Đã lưu';
-        btnModalSaveCloud.style.opacity = '0.6';
-
-        // Redraw QR with shortUrl
-        if (qrCodeContainer) {
-          qrCodeContainer.innerHTML = '';
-          const modalCanvas = document.createElement('canvas');
-          modalCanvas.width = 140;
-          modalCanvas.height = 140;
-          modalCanvas.style.display = 'block';
-          modalCanvas.style.margin = '0 auto';
-          const modalCtx = modalCanvas.getContext('2d');
-          modalCtx.fillStyle = '#FFFFFF';
-          modalCtx.fillRect(0, 0, 140, 140);
-          drawStylizedLeafQR(modalCanvas, shortUrl, { size: 140 });
-          qrCodeContainer.appendChild(modalCanvas);
-        }
-
-        if (flightSummaryTextarea) {
-          flightSummaryTextarea.value = formatFlightSummary(data, shortUrl);
-        }
-
-        navigator.clipboard.writeText(shortUrl);
-        showToast('💾 Đã lưu & kích hoạt link ngắn: ' + shortUrl, 'success');
-        return;
+      const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+      state.shortUrl = shortUrl;
+      
+      const hist = getTicketHistory();
+      const rec = hist.find(h => h.pnr === pnr);
+      if (rec) {
+        rec.shortUrl = shortUrl;
+        localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
       }
+
+      if (mobileUrlInput) mobileUrlInput.value = shortUrl;
+      const cloudBadge = $('cloud-link-badge');
+      if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981; font-weight:600;">⚡ Link ngắn chính thức: /' + pnr + '</span>';
       btnModalSaveCloud.disabled = false;
-      btnModalSaveCloud.innerHTML = '💾 Lưu link ngắn';
-      showToast('⚠️ Không thể lưu lên đám mây', 'error');
+      btnModalSaveCloud.innerHTML = '✅ Đã lưu';
+      btnModalSaveCloud.style.opacity = '0.85';
+
+      // Redraw QR with shortUrl
+      if (qrCodeContainer) {
+        qrCodeContainer.innerHTML = '';
+        const modalCanvas = document.createElement('canvas');
+        modalCanvas.width = 140;
+        modalCanvas.height = 140;
+        modalCanvas.style.display = 'block';
+        modalCanvas.style.margin = '0 auto';
+        const modalCtx = modalCanvas.getContext('2d');
+        modalCtx.fillStyle = '#FFFFFF';
+        modalCtx.fillRect(0, 0, 140, 140);
+        drawStylizedLeafQR(modalCanvas, shortUrl, { size: 140 });
+        qrCodeContainer.appendChild(modalCanvas);
+      }
+
+      if (flightSummaryTextarea) {
+        flightSummaryTextarea.value = formatFlightSummary(data, shortUrl);
+      }
+
+      navigator.clipboard.writeText(shortUrl).catch(() => {});
+      if (json && json.success) {
+        showToast('💾 Đã lưu & kích hoạt link ngắn: eticket.thesimple.media/' + pnr, 'success');
+      } else {
+        showToast('💾 Đã lưu vào bộ nhớ máy (Đám mây chưa phản hồi)', 'info');
+      }
     } catch (err) {
       console.warn('Modal save error:', err);
+      const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+      state.shortUrl = shortUrl;
+      if (mobileUrlInput) mobileUrlInput.value = shortUrl;
       btnModalSaveCloud.disabled = false;
-      btnModalSaveCloud.innerHTML = '💾 Lưu link ngắn';
-      showToast('⚠️ Lỗi kết nối đám mây', 'error');
+      btnModalSaveCloud.innerHTML = '✅ Đã lưu (Offline)';
+      btnModalSaveCloud.style.opacity = '0.85';
+      showToast('💾 Đã lưu vào bộ nhớ máy!', 'success');
     }
   });
 }
@@ -2278,6 +2387,13 @@ function parseFlightDateTimestamp(dateStr, timeStr = '00:00') {
     }
   } catch (e) {}
   return 0;
+}
+
+// Helper to strip day-of-week and format clean date string: "19/07/2026"
+function cleanFlightDateString(dateStr) {
+  if (!dateStr) return '';
+  const match = dateStr.match(/(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{4})?)/);
+  return match ? match[1] : dateStr.trim();
 }
 
 function saveTicketToHistory(options = { promptOverwrite: false }) {
@@ -2612,41 +2728,78 @@ function renderHistoryList(query = '') {
     '<table class="history-table">' +
       '<thead>' +
         '<tr>' +
-          '<th style="width: 12%;">Mã đặt chỗ</th>' +
-          '<th style="width: 14%;">Hãng bay</th>' +
-          '<th style="width: 15%;">Ngày bay</th>' +
-          '<th style="width: 19%;">Hành trình</th>' +
-          '<th style="width: 16%;">Khách bay</th>' +
-          '<th style="width: 24%; text-align: center;">Thao tác</th>' +
+          '<th style="width: 10%;">Mã đặt chỗ</th>' +
+          '<th style="width: 13%;">Hãng bay</th>' +
+          '<th style="width: 13%;">Ngày bay</th>' +
+          '<th style="width: 22%;">Hành trình</th>' +
+          '<th style="width: 22%;">Khách bay</th>' +
+          '<th style="width: 20%; text-align: center;">Thao tác</th>' +
         '</tr>' +
       '</thead>' +
       '<tbody>';
 
   filtered.forEach(item => {
-    // Get departure flight date display
-    let flightDisplay = item.flightDate || '';
-    if (!flightDisplay && item.ticketData?.f?.[0]?.dd) {
-      flightDisplay = item.ticketData.f[0].dd;
+    // 1. Ngày bay: chỉ để ngày -> xuống hàng là giờ bay chuyến đầu tiên
+    let dateOnly = '';
+    if (item.flightDate) {
+      dateOnly = cleanFlightDateString(item.flightDate);
+    } else if (item.ticketData?.f?.[0]?.dd) {
+      dateOnly = cleanFlightDateString(item.ticketData.f[0].dd);
     }
-    if (item.ticketData?.f?.[0]?.dt) {
-      flightDisplay = (flightDisplay ? flightDisplay + ' ' : '') + `(${item.ticketData.f[0].dt})`;
-    }
-    if (!flightDisplay) flightDisplay = '—';
 
+    let timeOnly = '';
+    if (item.ticketData?.f?.[0]?.dt) {
+      timeOnly = item.ticketData.f[0].dt;
+    }
+
+    let flightDateCellHtml = '—';
+    if (dateOnly && timeOnly) {
+      flightDateCellHtml = '<div style="font-weight: 700; color: #1e293b;">' + dateOnly + '</div>' +
+                           '<div style="font-size: 11px; font-weight: 600; color: #64748b; margin-top: 2px;">' + timeOnly + '</div>';
+    } else if (dateOnly) {
+      flightDateCellHtml = '<div style="font-weight: 700; color: #1e293b;">' + dateOnly + '</div>';
+    }
+
+    // 2. Hành trình: chỉ để hành trình + ngày (bỏ thứ)
+    let routeHtml = '—';
+    if (item.ticketData?.f && Array.isArray(item.ticketData.f) && item.ticketData.f.length > 0) {
+      routeHtml = item.ticketData.f.map(f => {
+        let seg = '<strong>' + (f.from || '') + ' → ' + (f.to || '') + '</strong>';
+        if (f.dd) {
+          seg += ' <span style="color: #64748b; font-size: 11px;">(' + cleanFlightDateString(f.dd) + ')</span>';
+        }
+        return seg;
+      }).join('<div style="margin: 3px 0; border-top: 1px dashed #f1f5f9; padding-top: 3px;"></div>');
+    } else if (item.routes) {
+      // Clean any day of week inside parentheses
+      let cleanRoutes = item.routes.replace(/\((?:Thứ\s+[^\d,)]+,\s*|Chủ\s+Nhật,\s*)?(\d{1,2}\/\d{1,2}(?:\/\d{4})?)\)/gi, '($1)');
+      routeHtml = cleanRoutes;
+    }
+
+    // 3. Khách bay: format readable
+    let passengersDisplay = item.passengers ? item.passengers.replace(/,\s*/g, '<br>') : '—';
+
+    // 4. Thao tác: 2 rows
+    // Row 1: Edit | Xóa
+    // Row 2: Tải QR | Copy | Mobile
     html += 
       '<tr>' +
         '<td><span class="history-pnr-badge">' + item.pnr + '</span></td>' +
-        '<td><strong>' + item.airline + '</strong></td>' +
-        '<td style="font-size: 11.5px; font-weight: 600; color: #1e293b; white-space: nowrap;">' + flightDisplay + '</td>' +
-        '<td style="font-size: 11.5px; line-height: 1.35; color: #334155;">' + (item.routes || '—') + '</td>' +
-        '<td style="font-size: 11.5px; line-height: 1.35; color: #475569;">' + (item.passengers || '—') + '</td>' +
+        '<td><strong style="color: #1e293b;">' + item.airline + '</strong></td>' +
+        '<td style="font-size: 11.5px;">' + flightDateCellHtml + '</td>' +
+        '<td style="font-size: 11.5px; line-height: 1.4; color: #334155;">' + routeHtml + '</td>' +
+        '<td style="font-size: 11.5px; line-height: 1.4; color: #475569;">' + passengersDisplay + '</td>' +
         '<td>' +
           '<div class="history-actions">' +
-            '<button class="btn btn-act-load" data-action="load" data-pnr="' + item.pnr + '" title="Mở lại vé vào trình chỉnh sửa">👁️ Mở vé</button>' +
-            '<button class="btn btn-act-copy" data-action="copy" data-pnr="' + item.pnr + '" title="Copy tóm tắt chuyến bay gửi Zalo">📋 Copy</button>' +
-            '<button class="btn btn-act-qr" data-action="download-qr" data-pnr="' + item.pnr + '" title="Tải ảnh thẻ mã QR (Full HD)">🔲 Tải QR</button>' +
-            (item.mobileUrl ? '<a href="' + (item.shortUrl || item.mobileUrl) + '" target="_blank" class="btn btn-act-mobile" title="Mở xem vé mobile online">📱 Mở vé</a>' : '') +
-            '<button class="btn btn-act-del" data-action="delete" data-pnr="' + item.pnr + '" title="Xóa vé này khỏi danh sách">🗑️ Xóa</button>' +
+            '<div class="history-actions-row">' +
+              '<button class="btn btn-act-load" data-action="load" data-pnr="' + item.pnr + '" title="Chỉnh sửa vé">Edit</button>' +
+              '<button class="btn btn-act-del" data-action="delete" data-pnr="' + item.pnr + '" title="Xóa vé này khỏi danh sách">Xóa</button>' +
+            '</div>' +
+            '<div class="history-actions-row">' +
+              '<button class="btn btn-act-qr" data-action="download-qr" data-pnr="' + item.pnr + '" title="Tải ảnh thẻ mã QR">Tải QR</button>' +
+              '<button class="btn btn-act-copy" data-action="copy" data-pnr="' + item.pnr + '" title="Copy tóm tắt chuyến bay">Copy</button>' +
+              (item.mobileUrl ? '<a href="' + (item.shortUrl || item.mobileUrl) + '" target="_blank" class="btn btn-act-mobile" title="Mở vé trực tuyến mobile">Mobile</a>' : '') +
+            '</div>' +
           '</div>' +
         '</td>' +
       '</tr>';
@@ -2676,7 +2829,7 @@ function renderHistoryList(query = '') {
 async function downloadQRByPnr(pnr) {
   const history = getTicketHistory();
   const item = history.find(h => h.pnr === pnr);
-  const url = item.shortUrl || item.mobileUrl;
+  const url = item?.shortUrl || item?.mobileUrl || ('https://eticket.thesimple.media/' + pnr);
   if (!url) {
     showToast('Chưa có link vé để tạo mã QR', 'error');
     return;
@@ -2685,21 +2838,7 @@ async function downloadQRByPnr(pnr) {
   showToast('⏳ Đang tạo ảnh thẻ mã QR Full HD...', '');
   try {
     const canvas = await generateStylizedQRCanvas(item.pnr, url, item.themeColor);
-
-    // 1. Trigger PNG download
-    const link = document.createElement('a');
-    link.download = 'QR_VeMayBay_' + item.pnr + '.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-
-    // 2. Also copy image to clipboard
-    canvas.toBlob(async blob => {
-      try {
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      } catch (err) {}
-    });
-
-    showToast('✅ Đã tải ảnh thẻ mã QR [' + item.pnr + ']!', 'success');
+    await handleCanvasExport(canvas, 'QR_VeMayBay_' + item.pnr + '.png', 'Mã QR Vé ' + item.pnr);
   } catch (err) {
     console.error(err);
     showToast('❌ Lỗi tải mã QR: ' + err.message, 'error');
@@ -2709,8 +2848,19 @@ async function downloadQRByPnr(pnr) {
 function loadTicketFromHistory(pnr) {
   const history = getTicketHistory();
   const item = history.find(h => h.pnr === pnr);
-  if (!item || !item.rawHTML) {
-    showToast('Không tìm thấy nội dung vé', 'error');
+  if (!item) {
+    showToast('Không tìm thấy thông tin booking', 'error');
+    return;
+  }
+  if (!item.rawHTML) {
+    const isMobile = window.innerWidth <= 768;
+    const targetUrl = item.shortUrl || item.mobileUrl || ('https://eticket.thesimple.media/' + pnr);
+    if (isMobile) {
+      window.open(targetUrl, '_blank');
+      showToast('📱 Đang mở vé điện tử: ' + pnr, 'info');
+      return;
+    }
+    showToast('ℹ️ File thiết kế A4 gốc lưu trên máy tính đã tạo vé. Bấm "Mobile" để xem vé online!', 'info');
     return;
   }
 
@@ -2723,6 +2873,8 @@ function loadTicketFromHistory(pnr) {
   state.fontFamily = item.fontFamily || 'Inter';
   state.fontScale = item.fontScale || 100;
   state.useGradient = item.useGradient !== undefined ? item.useGradient : false;
+  state.shortUrl = item.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+  state.mobileUrl = item.mobileUrl || null;
 
   // Sync inputs
   if (colorPicker) colorPicker.value = state.themeColor;
@@ -2883,7 +3035,23 @@ if (modalHistory) {
   });
 }
 if (historySearchInput) {
-  historySearchInput.addEventListener('input', e => renderHistoryList(e.target.value));
+  historySearchInput.addEventListener('input', e => {
+    const val = e.target.value;
+    if (btnClearHistorySearch) {
+      btnClearHistorySearch.style.display = val ? 'block' : 'none';
+    }
+    renderHistoryList(val);
+  });
+}
+if (btnClearHistorySearch) {
+  btnClearHistorySearch.addEventListener('click', () => {
+    if (historySearchInput) {
+      historySearchInput.value = '';
+      historySearchInput.focus();
+    }
+    btnClearHistorySearch.style.display = 'none';
+    renderHistoryList('');
+  });
 }
 if (historySortSelect) {
   historySortSelect.addEventListener('change', () => renderHistoryList(historySearchInput ? historySearchInput.value : ''));
@@ -2893,6 +3061,65 @@ if (btnSyncHistory) {
 }
 if (btnClearAllHistory) {
   btnClearAllHistory.addEventListener('click', clearAllHistory);
+}
+
+// ─── Image Export & Preview Modal Listeners ──────────────────
+if (btnImagePreviewClose) {
+  btnImagePreviewClose.addEventListener('click', closeImageExportModal);
+}
+if (modalImagePreview) {
+  modalImagePreview.addEventListener('click', e => {
+    if (e.target === modalImagePreview) closeImageExportModal();
+  });
+}
+if (btnImagePreviewShare) {
+  btnImagePreviewShare.addEventListener('click', async () => {
+    if (!currentExportBlob) return;
+    const filename = currentExportFilename || 'image.png';
+    const title = currentExportTitle || 'Vé Simple Travel';
+
+    if (navigator.canShare && window.File) {
+      try {
+        const file = new File([currentExportBlob], filename, { type: 'image/png' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: title,
+          });
+          return;
+        }
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.warn('Share error:', err);
+      }
+    }
+
+    // Fallback if sharing is not supported: trigger blob download
+    const objUrl = URL.createObjectURL(currentExportBlob);
+    const a = document.createElement('a');
+    a.download = filename;
+    a.href = objUrl;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(objUrl), 15000);
+    showToast('⬇️ Đang tải ảnh về máy...', 'info');
+  });
+}
+if (btnImagePreviewDownload) {
+  btnImagePreviewDownload.addEventListener('click', () => {
+    if (!currentExportBlob) return;
+    const filename = currentExportFilename || 'image.png';
+    const objUrl = URL.createObjectURL(currentExportBlob);
+    const a = document.createElement('a');
+    a.download = filename;
+    a.href = objUrl;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(objUrl), 15000);
+    showToast('⬇️ Đang tải file ' + filename, 'info');
+  });
 }
 
 // ─── Collapsible Panels ──────────────────────────────────────

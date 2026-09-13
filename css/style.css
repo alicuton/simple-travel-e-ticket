@@ -1051,54 +1051,65 @@ input, textarea, select { font-family: inherit; }
   background: #f8fafc;
   color: var(--brand-dark);
   font-weight: 700;
-  text-align: left;
-  padding: 10px 12px;
+  text-align: center;
+  vertical-align: middle;
+  padding: 10px 10px;
   border-bottom: 1px solid var(--brand-border);
   position: sticky;
   top: 0;
   z-index: 1;
+  white-space: nowrap;
 }
 .history-table td {
-  padding: 10px 12px;
+  padding: 10px 8px;
   border-bottom: 1px solid #f1f5f9;
-  vertical-align: middle;
+  vertical-align: top;
+  text-align: center;
 }
 .history-table tr:hover {
   background: #f8fafc;
 }
 .history-pnr-badge {
-  background: #fef3c7;
-  color: #92400e;
+  color: #0f172a;
   font-weight: 800;
-  font-size: 13px;
+  font-size: 13.5px;
   letter-spacing: 0.5px;
-  padding: 4px 9px;
-  border-radius: 6px;
   display: inline-block;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  border: 1px solid #fde68a;
 }
 .history-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.history-actions-row {
   display: flex;
   gap: 5px;
   align-items: center;
   justify-content: center;
-  flex-wrap: nowrap;
+  width: 100%;
 }
 .history-actions .btn {
-  padding: 4px 7px;
-  font-size: 11.5px;
+  padding: 4px 8px;
+  font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
   border-radius: 6px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
 }
 .history-actions .btn-act-load {
-  background: var(--brand-primary);
-  color: #0f172a;
-  border: 1px solid var(--brand-primary);
+  background: #f1f5f9;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+}
+.history-actions .btn-act-load:hover {
+  background: #e2e8f0;
 }
 .history-actions .btn-act-copy {
   background: #f0f9ff;
@@ -1280,6 +1291,12 @@ input, textarea, select { font-family: inherit; }
   }
   .history-actions {
     display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+  .history-actions-row {
+    display: flex;
     gap: 8px;
     width: 100%;
   }
@@ -1291,7 +1308,7 @@ input, textarea, select { font-family: inherit; }
     justify-content: center;
     border-radius: 8px;
   }
-  /* On mobile: Hide "Mở vào soạn thảo vé", make QR & Copy buttons full width */
+  /* On mobile: Hide "Edit", keep Delete or make rows clean */
   .history-actions button[data-action="load"] {
     display: none !important;
   }
@@ -1306,6 +1323,30 @@ input, textarea, select { font-family: inherit; }
   }
   #modal-mobile-qr .modal-actions-col {
     width: 100% !important;
+  }
+
+  /* 6. Image Preview / Save Modal on mobile */
+  #modal-image-preview {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(15, 23, 42, 0.75) !important;
+    backdrop-filter: blur(8px) !important;
+    z-index: 10005 !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px !important;
+  }
+  #modal-image-preview .modal-card {
+    width: 95% !important;
+    max-width: 440px !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3) !important;
+    background: #ffffff !important;
+    min-height: auto !important;
+  }
+  #modal-image-preview .modal-close {
+    display: block !important;
   }
 }
 
