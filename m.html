@@ -26,7 +26,7 @@
     }
     body {
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      background: #0F172A;
+      background: #F4F6F8;
       color: var(--text-main);
       min-height: 100vh;
       display: flex;
@@ -46,7 +46,7 @@
       background: var(--bg-card);
       border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
       position: relative;
     }
     /* Header Brand */
@@ -368,7 +368,17 @@
       display: none !important;
     }
     body.in-preview {
-      padding-bottom: 24px !important;
+      background: #FFFFFF !important;
+      padding: 0 !important;
+    }
+    body.in-preview .mobile-shell {
+      max-width: 100% !important;
+      margin: 0 !important;
+    }
+    body.in-preview .ticket-card {
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      border: none !important;
     }
     .btn-action {
       flex: 1;
