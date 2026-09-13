@@ -837,9 +837,9 @@ function drawStylizedLeafQR(targetCanvas, text, options = {}) {
   }
 
   // Draw 3 Stylized Leaf Eyes
-  drawEye(0, 0, 'diag1'); // Top-Left
-  drawEye(count - 7, 0, 'diag2'); // Top-Right
-  drawEye(0, count - 7, 'diag1'); // Bottom-Left
+  drawEye(0, 0, 'diag1'); // Top-Left: Top-Left & Bottom-Right rounded
+  drawEye(count - 7, 0, 'diag2'); // Top-Right: Top-Right & Bottom-Left rounded
+  drawEye(0, count - 7, 'diag2'); // Bottom-Left: Bottom-Left & Top-Right rounded (rounds outer corner!)
 }
 
 function getQRCodeDataUrl(text, size = 180) {
@@ -2292,6 +2292,8 @@ function saveTicketToHistory() {
     routes: routesStr,
     passengers: passengersStr,
     mobileUrl: state.mobileUrl || generateMobileTicketUrl(data),
+    shortUrl: state.shortUrl || ('https://eticket.thesimple.media/' + pnr),
+    ticketData: data,
     themeColor: state.themeColor,
     fontFamily: state.fontFamily,
     fontScale: state.fontScale,
@@ -2490,20 +2492,50 @@ function copyFlightSummaryByPnr(pnr) {
   const item = history.find(h => h.pnr === pnr);
   if (!item) return;
 
+  const shortLink = item.shortUrl || ('https://eticket.thesimple.media/' + item.pnr);
+
+  // If item has full ticketData, use formatFlightSummary directly for identical template!
+  if (item.ticketData) {
+    const txt = formatFlightSummary(item.ticketData, shortLink);
+    navigator.clipboard.writeText(txt.trim()).then(() => {
+      showToast('📋 Đã copy tóm tắt vé ' + pnr, 'success');
+    }).catch(() => {
+      showToast('⚠️ Không thể sao chép tự động', 'error');
+    });
+    return;
+  }
+
+  // Fallback if legacy record has rawHTML: parse ticket data
+  if (item.rawHTML) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(item.rawHTML, 'text/html');
+      const data = extractTicketData(doc);
+      if (data) {
+        const txt = formatFlightSummary(data, shortLink);
+        navigator.clipboard.writeText(txt.trim()).then(() => {
+          showToast('📋 Đã copy tóm tắt vé ' + pnr, 'success');
+        }).catch(() => {
+          showToast('⚠️ Không thể sao chép tự động', 'error');
+        });
+        return;
+      }
+    } catch (e) {
+      console.warn('Fallback parse ticketData error:', e);
+    }
+  }
+
+  // Fallback for older records without rawHTML
   let txt = '✈️ VÉ ĐIỆN TỬ - SIMPLE TRAVEL\n';
   txt += 'Mã đặt chỗ: ' + item.pnr + '\n';
   txt += 'Hãng: ' + item.airline + '\n\n';
   if (item.routes) {
-    txt += '🛫 Hành trình: ' + item.routes + '\n\n';
+    txt += '🛫 ' + item.routes + '\n\n';
   }
   if (item.passengers) {
     txt += 'Khách bay:\n' + item.passengers.split(', ').map((n, i) => (i+1) + '. ' + n).join('\n') + '\n';
   }
-
-  const linkToShare = item.shortUrl || item.mobileUrl;
-  if (linkToShare) {
-    txt += '\n📱 Xem vé online: ' + linkToShare + '\n';
-  }
+  txt += '\n📱 Xem vé online: ' + shortLink + '\n';
 
   navigator.clipboard.writeText(txt.trim()).then(() => {
     showToast('📋 Đã copy tóm tắt vé ' + pnr, 'success');
