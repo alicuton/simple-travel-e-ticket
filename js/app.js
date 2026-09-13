@@ -166,6 +166,7 @@ const btnModalHistoryClose  = $('btn-modal-history-close');
 const historySearchInput    = $('history-search-input');
 const historySortSelect     = $('history-sort-select');
 const btnClearAllHistory    = $('btn-clear-all-history');
+const btnSyncHistory        = $('btn-sync-history');
 const historyTableContainer = $('history-table-container');
 
 // Airline panel DOM
@@ -998,12 +999,8 @@ function openMobileQRModal() {
     // Auto-sync ticket data to Upstash cloud in background so the link is immediately live!
     if (pnr) {
       saveTicketToHistory();
-      fetch('/api/ticket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pnr: pnr, ticketData: ticketData })
-      }).then(res => res.json()).then(json => {
-        if (json.success) {
+      pushTicketToCloud(pnr, ticketData).then(json => {
+        if (json && json.success) {
           if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Đã kết nối đám mây (/' + pnr + ')</span>';
           if (btnModalSaveCloud) {
             btnModalSaveCloud.innerHTML = '✅ Đã lưu';
@@ -2184,53 +2181,46 @@ if (btnModalSaveCloud) {
     btnModalSaveCloud.disabled = true;
     btnModalSaveCloud.innerHTML = '⏳ Đang lưu...';
     try {
-      const res = await fetch('/api/ticket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pnr: pnr, ticketData: data })
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          const shortUrl = 'https://eticket.thesimple.media/' + pnr;
-          state.shortUrl = shortUrl;
-          
-          const hist = getTicketHistory();
-          const rec = hist.find(h => h.pnr === pnr);
-          if (rec) {
-            rec.shortUrl = shortUrl;
-            localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
-          }
-
-          if (mobileUrlInput) mobileUrlInput.value = shortUrl;
-          const cloudBadge = $('cloud-link-badge');
-          if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Link ngắn đám mây</span>';
-          btnModalSaveCloud.innerHTML = '✅ Đã lưu';
-          btnModalSaveCloud.style.opacity = '0.6';
-
-          // Redraw QR with shortUrl
-          if (qrCodeContainer) {
-            qrCodeContainer.innerHTML = '';
-            const modalCanvas = document.createElement('canvas');
-            modalCanvas.width = 140;
-            modalCanvas.height = 140;
-            modalCanvas.style.display = 'block';
-            modalCanvas.style.margin = '0 auto';
-            const modalCtx = modalCanvas.getContext('2d');
-            modalCtx.fillStyle = '#FFFFFF';
-            modalCtx.fillRect(0, 0, 140, 140);
-            drawStylizedLeafQR(modalCanvas, shortUrl, { size: 140 });
-            qrCodeContainer.appendChild(modalCanvas);
-          }
-
-          if (flightSummaryTextarea) {
-            flightSummaryTextarea.value = formatFlightSummary(data, shortUrl);
-          }
-
-          navigator.clipboard.writeText(shortUrl);
-          showToast('💾 Đã lưu & kích hoạt link ngắn: ' + shortUrl, 'success');
-          return;
+      const json = await pushTicketToCloud(pnr, data);
+      if (json && json.success) {
+        const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+        state.shortUrl = shortUrl;
+        
+        const hist = getTicketHistory();
+        const rec = hist.find(h => h.pnr === pnr);
+        if (rec) {
+          rec.shortUrl = shortUrl;
+          localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
         }
+
+        if (mobileUrlInput) mobileUrlInput.value = shortUrl;
+        const cloudBadge = $('cloud-link-badge');
+        if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Link ngắn đám mây</span>';
+        btnModalSaveCloud.innerHTML = '✅ Đã lưu';
+        btnModalSaveCloud.style.opacity = '0.6';
+
+        // Redraw QR with shortUrl
+        if (qrCodeContainer) {
+          qrCodeContainer.innerHTML = '';
+          const modalCanvas = document.createElement('canvas');
+          modalCanvas.width = 140;
+          modalCanvas.height = 140;
+          modalCanvas.style.display = 'block';
+          modalCanvas.style.margin = '0 auto';
+          const modalCtx = modalCanvas.getContext('2d');
+          modalCtx.fillStyle = '#FFFFFF';
+          modalCtx.fillRect(0, 0, 140, 140);
+          drawStylizedLeafQR(modalCanvas, shortUrl, { size: 140 });
+          qrCodeContainer.appendChild(modalCanvas);
+        }
+
+        if (flightSummaryTextarea) {
+          flightSummaryTextarea.value = formatFlightSummary(data, shortUrl);
+        }
+
+        navigator.clipboard.writeText(shortUrl);
+        showToast('💾 Đã lưu & kích hoạt link ngắn: ' + shortUrl, 'success');
+        return;
       }
       btnModalSaveCloud.disabled = false;
       btnModalSaveCloud.innerHTML = '💾 Lưu link ngắn';
@@ -2368,9 +2358,198 @@ function saveTicketToHistory(options = { promptOverwrite: false }) {
   return true;
 }
 
+// ─── Cloud Synchronization (Upstash Redis <-> LocalStorage) ───
+async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
+  if (!pnr) return null;
+  const cleanPnr = String(pnr).trim().toUpperCase();
+  try {
+    const hist = getTicketHistory();
+    const rec = customRecord || hist.find(h => h.pnr === cleanPnr);
+    const payload = {
+      pnr: cleanPnr,
+      ticketData: ticketData,
+      record: rec ? {
+        pnr: cleanPnr,
+        airline: rec.airline,
+        airlineLogo: rec.airlineLogo || null,
+        routes: rec.routes || '',
+        passengers: rec.passengers || '',
+        flightDate: rec.flightDate || '',
+        flightTimestamp: rec.flightTimestamp || 0,
+        shortUrl: rec.shortUrl || ('https://eticket.thesimple.media/' + cleanPnr),
+        themeColor: rec.themeColor || BRAND_DEFAULT,
+        fontFamily: rec.fontFamily || 'Inter',
+        fontScale: rec.fontScale || 100,
+        ticketData: ticketData,
+        savedAtTimestamp: rec.savedAtTimestamp || Date.now(),
+        updatedAt: rec.updatedAt || new Date().toLocaleString('vi-VN', {
+          hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
+        })
+      } : null
+    };
+    const res = await fetch('/api/ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('pushTicketToCloud error:', err);
+  }
+  return null;
+}
+
+function normalizeCloudTicket(cloudItem) {
+  if (!cloudItem) return null;
+  const tData = cloudItem.ticketData || (cloudItem.f ? cloudItem : null);
+  const pnr = (cloudItem.pnr || cloudItem.p || tData?.p || '').trim().toUpperCase();
+  if (!pnr) return null;
+
+  let routesStr = cloudItem.routes || '';
+  if (!routesStr && tData && Array.isArray(tData.f)) {
+    routesStr = tData.f.map(f => {
+      let r = (f.from || '') + ' → ' + (f.to || '');
+      if (f.dd) r += ' (' + f.dd + ')';
+      return r;
+    }).join(' • ');
+  }
+
+  let passengersStr = cloudItem.passengers || '';
+  if (!passengersStr && tData && Array.isArray(tData.px)) {
+    passengersStr = tData.px.map(p => p.n).filter(Boolean).join(', ');
+  }
+
+  const firstFlight = tData?.f?.[0] || {};
+  const flightDateStr = cloudItem.flightDate || firstFlight.dd || '';
+  const flightTimeStr = firstFlight.dt || '';
+  const flightTimestamp = cloudItem.flightTimestamp || parseFlightDateTimestamp(flightDateStr, flightTimeStr);
+
+  const shortUrl = cloudItem.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+  const mobileUrl = cloudItem.mobileUrl || (tData ? generateMobileTicketUrl(tData) : shortUrl);
+
+  return {
+    pnr: pnr,
+    airline: cloudItem.airline || tData?.a || 'VIETJET AIR',
+    airlineLogo: cloudItem.airlineLogo || null,
+    routes: routesStr,
+    passengers: passengersStr,
+    flightDate: flightDateStr,
+    flightTimestamp: flightTimestamp,
+    mobileUrl: mobileUrl,
+    shortUrl: shortUrl,
+    ticketData: tData,
+    themeColor: cloudItem.themeColor || tData?.c || BRAND_DEFAULT,
+    fontFamily: cloudItem.fontFamily || 'Inter',
+    fontScale: cloudItem.fontScale || 100,
+    useGradient: cloudItem.useGradient !== undefined ? cloudItem.useGradient : false,
+    rawHTML: cloudItem.rawHTML || null,
+    fileName: cloudItem.fileName || (pnr + '.html'),
+    savedAtTimestamp: cloudItem.savedAtTimestamp || Date.now(),
+    updatedAt: cloudItem.updatedAt || 'Đồng bộ từ đám mây'
+  };
+}
+
+let isSyncingCloud = false;
+async function syncHistoryWithCloud(showNotice = false) {
+  if (isSyncingCloud) return;
+  isSyncingCloud = true;
+
+  if (btnSyncHistory) {
+    btnSyncHistory.disabled = true;
+    btnSyncHistory.innerHTML = '🔄 Đang đồng bộ...';
+  }
+
+  const localItems = getTicketHistory();
+  if (localItems.length === 0 && historyTableContainer) {
+    historyTableContainer.innerHTML = 
+      '<div style="text-align: center; padding: 48px 20px; color: var(--brand-muted);">' +
+        '<div style="font-size: 30px; display: inline-block; animation: etkt-spin 1.2s linear infinite;">🔄</div>' +
+        '<div style="font-weight: 600; font-size: 14px; color: var(--brand-dark); margin-top: 12px;">' +
+          'Đang đồng bộ danh sách booking từ hệ thống...' +
+        '</div>' +
+      '</div>';
+  }
+
+  try {
+    const res = await fetch('/api/ticket?all=true');
+    if (!res.ok) {
+      throw new Error('HTTP ' + res.status);
+    }
+    const json = await res.json();
+    if (!json.success || !Array.isArray(json.tickets)) {
+      throw new Error(json.error || 'Dữ liệu đám mây không hợp lệ');
+    }
+
+    const cloudTickets = json.tickets;
+    let history = getTicketHistory();
+    let changeCount = 0;
+
+    cloudTickets.forEach(rawItem => {
+      const normalized = normalizeCloudTicket(rawItem);
+      if (!normalized) return;
+
+      const idx = history.findIndex(h => h.pnr === normalized.pnr);
+      if (idx === -1) {
+        history.push(normalized);
+        changeCount++;
+      } else {
+        const local = history[idx];
+        let itemUpdated = false;
+        if (!local.ticketData && normalized.ticketData) {
+          local.ticketData = normalized.ticketData;
+          itemUpdated = true;
+        }
+        if (!local.routes && normalized.routes) {
+          local.routes = normalized.routes;
+          itemUpdated = true;
+        }
+        if (!local.passengers && normalized.passengers) {
+          local.passengers = normalized.passengers;
+          itemUpdated = true;
+        }
+        if (!local.flightDate && normalized.flightDate) {
+          local.flightDate = normalized.flightDate;
+          itemUpdated = true;
+        }
+        if (!local.flightTimestamp && normalized.flightTimestamp) {
+          local.flightTimestamp = normalized.flightTimestamp;
+          itemUpdated = true;
+        }
+        if (itemUpdated) changeCount++;
+      }
+    });
+
+    if (changeCount > 0 || localItems.length === 0) {
+      localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
+      renderHistoryList(historySearchInput ? historySearchInput.value : '');
+    }
+
+    if (showNotice) {
+      showToast(`☁️ Đã đồng bộ ${cloudTickets.length} vé từ đám mây!`, 'success');
+    }
+  } catch (err) {
+    console.warn('Sync cloud error:', err);
+    if (localItems.length === 0) {
+      renderHistoryList(historySearchInput ? historySearchInput.value : '');
+    }
+    if (showNotice) {
+      showToast('⚠️ Không thể kết nối tới đám mây: ' + err.message, 'error');
+    }
+  } finally {
+    isSyncingCloud = false;
+    if (btnSyncHistory) {
+      btnSyncHistory.disabled = false;
+      btnSyncHistory.innerHTML = '🔄 Đồng bộ';
+    }
+  }
+}
+
 function openHistoryModal() {
   renderHistoryList();
   modalHistory.style.display = 'flex';
+  syncHistoryWithCloud(false);
 }
 
 function closeHistoryModal() {
@@ -2674,26 +2853,18 @@ if (btnSaveBooking) {
 
     showToast('⏳ Đang lưu [' + pnr + '] lên đám mây...');
     try {
-      const res = await fetch('/api/ticket', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pnr: pnr, ticketData: data })
-      });
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          const shortUrl = 'https://eticket.thesimple.media/' + pnr;
-          state.shortUrl = shortUrl;
-          // Update record in history
-          const hist = getTicketHistory();
-          const rec = hist.find(h => h.pnr === pnr);
-          if (rec) {
-            rec.shortUrl = shortUrl;
-            localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
-          }
-          showToast('💾 Đã lưu booking & kích hoạt link: eticket.thesimple.media/' + pnr, 'success');
-          return;
+      const json = await pushTicketToCloud(pnr, data);
+      if (json && json.success) {
+        const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+        state.shortUrl = shortUrl;
+        const hist = getTicketHistory();
+        const rec = hist.find(h => h.pnr === pnr);
+        if (rec) {
+          rec.shortUrl = shortUrl;
+          localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
         }
+        showToast('💾 Đã lưu booking & kích hoạt link: eticket.thesimple.media/' + pnr, 'success');
+        return;
       }
       showToast('💾 Đã lưu vào bộ nhớ máy (Đám mây chưa phản hồi)', '');
     } catch (err) {
@@ -2715,6 +2886,9 @@ if (historySearchInput) {
 }
 if (historySortSelect) {
   historySortSelect.addEventListener('change', () => renderHistoryList(historySearchInput ? historySearchInput.value : ''));
+}
+if (btnSyncHistory) {
+  btnSyncHistory.addEventListener('click', () => syncHistoryWithCloud(true));
 }
 if (btnClearAllHistory) {
   btnClearAllHistory.addEventListener('click', clearAllHistory);
@@ -2823,6 +2997,7 @@ function initAuth() {
         if (window.innerWidth <= 768) {
           renderHistoryList();
         }
+        syncHistoryWithCloud(false);
         showToast('👋 Đăng nhập thành công! Chào mừng bạn.', 'success');
       } else {
         if (authError) {
@@ -2932,10 +3107,11 @@ buildPresets();
 renderLuuYTemplates();
 initCollapsiblePanels();
 
-// On mobile devices, automatically render booking history list as the primary hub
-if (window.innerWidth <= 768) {
-  const isAuth = localStorage.getItem(LS_KEY_AUTH_SESSION) === 'true' || sessionStorage.getItem(LS_KEY_AUTH_SESSION) === 'true';
-  if (isAuth) {
+// Automatically sync booking history with cloud on app load
+const isAuth = localStorage.getItem(LS_KEY_AUTH_SESSION) === 'true' || sessionStorage.getItem(LS_KEY_AUTH_SESSION) === 'true';
+if (isAuth) {
+  if (window.innerWidth <= 768) {
     renderHistoryList();
   }
+  syncHistoryWithCloud(false);
 }

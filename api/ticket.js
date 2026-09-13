@@ -25,7 +25,64 @@ module.exports = async (req, res) => {
   }
 
   if (req.method === 'GET') {
-    const { pnr } = req.query;
+    const { pnr, all } = req.query;
+    // 1. Get all tickets list for cross-device sync (e.g., Mobile <-> Desktop)
+    if (all === 'true' || all === '1' || (!pnr && req.url && req.url.includes('all=true'))) {
+      try {
+        let keys = [];
+        try {
+          const keysRes = await fetch(kvUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${kvToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(['KEYS', 'ticket:*'])
+          });
+          const keysData = await keysRes.json();
+          if (Array.isArray(keysData.result)) keys = keysData.result;
+        } catch (e) {}
+
+        if (keys.length === 0) {
+          try {
+            const keysRes = await fetch(`${kvUrl}/keys/ticket:*`, {
+              headers: { Authorization: `Bearer ${kvToken}` }
+            });
+            const keysData = await keysRes.json();
+            if (Array.isArray(keysData.result)) keys = keysData.result;
+          } catch (e) {}
+        }
+
+        if (!Array.isArray(keys) || keys.length === 0) {
+          return res.status(200).json({ success: true, tickets: [] });
+        }
+
+        // Fetch all values via MGET
+        const mgetRes = await fetch(kvUrl, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${kvToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(['MGET', ...keys])
+        });
+        const mgetData = await mgetRes.json();
+        const values = Array.isArray(mgetData.result) ? mgetData.result : [];
+        const tickets = [];
+        values.forEach(v => {
+          if (v) {
+            try {
+              tickets.push(typeof v === 'string' ? JSON.parse(v) : v);
+            } catch(e) {}
+          }
+        });
+        return res.status(200).json({ success: true, tickets });
+      } catch (err) {
+        console.error('Fetch all tickets error:', err);
+        return res.status(500).json({ error: 'Failed to retrieve tickets', details: err.message });
+      }
+    }
+
     if (!pnr) {
       return res.status(400).json({ error: 'Missing PNR' });
     }
@@ -40,13 +97,15 @@ module.exports = async (req, res) => {
       if (!data || data.result === null || data.result === undefined) {
         return res.status(404).json({ error: 'Booking not found', pnr: cleanPnr });
       }
-      let ticketData = data.result;
-      if (typeof ticketData === 'string') {
+      let rawData = data.result;
+      if (typeof rawData === 'string') {
         try {
-          ticketData = JSON.parse(ticketData);
+          rawData = JSON.parse(rawData);
         } catch (e) {}
       }
-      return res.status(200).json({ success: true, pnr: cleanPnr, ticketData });
+      // If full record was saved, extract ticketData
+      const ticketData = (rawData && rawData.ticketData) ? rawData.ticketData : rawData;
+      return res.status(200).json({ success: true, pnr: cleanPnr, ticketData, record: rawData });
     } catch (err) {
       console.error('Fetch ticket error:', err);
       return res.status(500).json({ error: 'Failed to retrieve ticket', details: err.message });
@@ -58,13 +117,15 @@ module.exports = async (req, res) => {
     if (typeof body === 'string') {
       try { body = JSON.parse(body); } catch(e) {}
     }
-    const { pnr, ticketData } = body || {};
-    if (!pnr || !ticketData) {
-      return res.status(400).json({ error: 'Missing pnr or ticketData' });
+    const { pnr, ticketData, record } = body || {};
+    if (!pnr || (!ticketData && !record)) {
+      return res.status(400).json({ error: 'Missing pnr or ticketData/record' });
     }
     const cleanPnr = String(pnr).trim().toUpperCase();
     try {
-      const payloadStr = typeof ticketData === 'string' ? ticketData : JSON.stringify(ticketData);
+      // Store the full record or ticketData object
+      const toSave = record || { pnr: cleanPnr, ticketData };
+      const payloadStr = typeof toSave === 'string' ? toSave : JSON.stringify(toSave);
       const response = await fetch(kvUrl, {
         method: 'POST',
         headers: {
@@ -91,12 +152,31 @@ module.exports = async (req, res) => {
     try {
       if (all === 'true' || all === '1') {
         // Find all ticket:* keys and delete them
-        const keysRes = await fetch(`${kvUrl}/keys/ticket:*`, {
-          headers: { Authorization: `Bearer ${kvToken}` }
-        });
-        const keysData = await keysRes.json();
-        const keys = keysData.result || [];
-        if (keys.length > 0) {
+        let keys = [];
+        try {
+          const keysRes = await fetch(kvUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${kvToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(['KEYS', 'ticket:*'])
+          });
+          const keysData = await keysRes.json();
+          if (Array.isArray(keysData.result)) keys = keysData.result;
+        } catch (e) {}
+
+        if (keys.length === 0) {
+          try {
+            const keysRes = await fetch(`${kvUrl}/keys/ticket:*`, {
+              headers: { Authorization: `Bearer ${kvToken}` }
+            });
+            const keysData = await keysRes.json();
+            if (Array.isArray(keysData.result)) keys = keysData.result;
+          } catch (e) {}
+        }
+
+        if (Array.isArray(keys) && keys.length > 0) {
           await fetch(kvUrl, {
             method: 'POST',
             headers: {

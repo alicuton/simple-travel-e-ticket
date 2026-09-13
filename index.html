@@ -503,9 +503,14 @@
             </select>
           </div>
 
-          <button class="btn btn--outline btn--sm" id="btn-clear-all-history" style="color: #ef4444; border-color: #fca5a5; white-space: nowrap;">
-            🗑️ Xóa tất cả
-          </button>
+          <div style="display: flex; gap: 8px;">
+            <button class="btn btn--outline btn--sm" id="btn-sync-history" style="white-space: nowrap; font-weight: 600;" title="Đồng bộ danh sách booking từ hệ thống đám mây">
+              🔄 Đồng bộ
+            </button>
+            <button class="btn btn--outline btn--sm" id="btn-clear-all-history" style="color: #ef4444; border-color: #fca5a5; white-space: nowrap;">
+              🗑️ Xóa tất cả
+            </button>
+          </div>
         </div>
 
         <div id="history-table-container" style="max-height: 440px; overflow-y: auto; border: 1px solid var(--brand-border); border-radius: 8px; background: #fff;">
@@ -555,6 +560,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=5.0"></script>
+  <script src="js/app.js?v=5.1"></script>
 </body>
 </html>
