@@ -490,9 +490,20 @@
       </div>
 
       <div class="modal-body" style="flex-direction: column; gap: 12px; padding: 16px 20px;">
-        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between;">
-          <input type="text" id="history-search-input" placeholder="🔍 Tìm theo Mã đặt chỗ (PNR), Tên khách hoặc Chặng bay..." class="font-select" style="padding: 8px 12px; font-size: 13px; flex: 1;" spellcheck="false">
-          <button class="btn btn--outline btn--sm" id="btn-clear-all-history" style="color: #ef4444; border-color: #fca5a5;">
+        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+          <input type="text" id="history-search-input" placeholder="🔍 Tìm theo Mã đặt chỗ (PNR), Tên khách hoặc Chặng bay..." class="font-select" style="padding: 8px 12px; font-size: 13px; flex: 1; min-width: 260px;" spellcheck="false">
+          
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <label for="history-sort-select" style="font-size: 12px; font-weight: 600; color: var(--brand-dark); white-space: nowrap;">Sắp xếp:</label>
+            <select id="history-sort-select" class="font-select" style="padding: 7px 10px; font-size: 12px; border-radius: var(--radius-sm); background: #fff;">
+              <option value="flightDate-asc" selected>🛫 Ngày bay (Gần nhất → Xa nhất)</option>
+              <option value="flightDate-desc">🛫 Ngày bay (Xa nhất → Gần nhất)</option>
+              <option value="updatedAt-desc">🕒 Thời gian lưu (Mới nhất)</option>
+              <option value="pnr-asc">🔤 Mã đặt chỗ (A → Z)</option>
+            </select>
+          </div>
+
+          <button class="btn btn--outline btn--sm" id="btn-clear-all-history" style="color: #ef4444; border-color: #fca5a5; white-space: nowrap;">
             🗑️ Xóa tất cả
           </button>
         </div>
@@ -544,6 +555,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=4.8"></script>
+  <script src="js/app.js?v=4.9"></script>
 </body>
 </html>

@@ -164,6 +164,7 @@ const btnSaveBooking        = $('btn-save-booking');
 const modalHistory          = $('modal-history');
 const btnModalHistoryClose  = $('btn-modal-history-close');
 const historySearchInput    = $('history-search-input');
+const historySortSelect     = $('history-sort-select');
 const btnClearAllHistory    = $('btn-clear-all-history');
 const historyTableContainer = $('history-table-container');
 
@@ -2265,7 +2266,30 @@ function getTicketHistory() {
   return [];
 }
 
-function saveTicketToHistory() {
+// Helper to parse Vietnamese flight date string like "Thứ Ba, 22/09/2026" or "22/09/2026" into timestamp
+function parseFlightDateTimestamp(dateStr, timeStr = '00:00') {
+  if (!dateStr) return 0;
+  try {
+    const match = dateStr.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (match) {
+      const d = parseInt(match[1], 10);
+      const m = parseInt(match[2], 10) - 1;
+      const y = parseInt(match[3], 10);
+      let hh = 0, mm = 0;
+      if (timeStr) {
+        const tMatch = timeStr.match(/(\d{1,2}):(\d{2})/);
+        if (tMatch) {
+          hh = parseInt(tMatch[1], 10);
+          mm = parseInt(tMatch[2], 10);
+        }
+      }
+      return new Date(y, m, d, hh, mm).getTime();
+    }
+  } catch (e) {}
+  return 0;
+}
+
+function saveTicketToHistory(options = { promptOverwrite: false }) {
   if (!state.rawHTML) return false;
   const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
   if (!iDoc) return false;
@@ -2274,8 +2298,18 @@ function saveTicketToHistory() {
   if (!data || !data.p) return false;
 
   const history = getTicketHistory();
-  const pnr = data.p;
+  const pnr = (data.p || '').trim().toUpperCase();
   const logoSrc = state.airlineLogo || state.originalAirlineLogo;
+
+  // Check duplicate booking
+  const existingRecord = history.find(item => item.pnr === pnr);
+  if (existingRecord && options.promptOverwrite) {
+    const confirmMsg = `⚠️ CẢNH BÁO TRÙNG BOOKING!\n\nMã đặt chỗ [${pnr}] đã tồn tại trong danh sách (Lưu lúc: ${existingRecord.updatedAt || 'trước đó'}).\n\nBạn có muốn LƯU ĐÈ (cập nhật thông tin mới nhất) cho booking này không?`;
+    if (!confirm(confirmMsg)) {
+      showToast(`Đã hủy lưu đè booking [${pnr}]`, 'info');
+      return false;
+    }
+  }
 
   const routesStr = (data.f || []).map(f => {
     let r = (f.from || '') + ' → ' + (f.to || '');
@@ -2285,12 +2319,20 @@ function saveTicketToHistory() {
 
   const passengersStr = (data.px || []).map(p => p.n).join(', ');
 
+  // Extract first flight date for sorting
+  const firstFlight = (data.f && data.f[0]) || {};
+  const flightDateStr = firstFlight.dd || '';
+  const flightTimeStr = firstFlight.dt || '';
+  const flightTimestamp = parseFlightDateTimestamp(flightDateStr, flightTimeStr);
+
   const record = {
     pnr: pnr,
     airline: data.a || state.airlineName || 'VIETJET AIR',
     airlineLogo: logoSrc,
     routes: routesStr,
     passengers: passengersStr,
+    flightDate: flightDateStr,
+    flightTimestamp: flightTimestamp,
     mobileUrl: state.mobileUrl || generateMobileTicketUrl(data),
     shortUrl: state.shortUrl || ('https://eticket.thesimple.media/' + pnr),
     ticketData: data,
@@ -2300,6 +2342,7 @@ function saveTicketToHistory() {
     useGradient: state.useGradient,
     rawHTML: state.rawHTML,
     fileName: state.fileName || (pnr + '.html'),
+    savedAtTimestamp: Date.now(),
     updatedAt: new Date().toLocaleString('vi-VN', {
       hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
     })
@@ -2314,8 +2357,8 @@ function saveTicketToHistory() {
   // Prepend to top
   history.unshift(record);
 
-  // Keep top 50
-  if (history.length > 50) history.pop();
+  // Keep top 100
+  if (history.length > 100) history.pop();
 
   try {
     localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
@@ -2339,12 +2382,39 @@ function renderHistoryList(query = '') {
   const history = getTicketHistory();
   const q = query.trim().toLowerCase();
 
-  const filtered = q ? history.filter(h => 
+  let filtered = q ? history.filter(h => 
     (h.pnr || '').toLowerCase().includes(q) ||
     (h.airline || '').toLowerCase().includes(q) ||
     (h.routes || '').toLowerCase().includes(q) ||
     (h.passengers || '').toLowerCase().includes(q)
-  ) : history;
+  ) : [...history];
+
+  // Apply sorting according to historySortSelect
+  const sortMode = (historySortSelect && historySortSelect.value) || 'flightDate-asc';
+  filtered.sort((a, b) => {
+    // Ensure flightTimestamp exists (fallback for legacy records)
+    const timeA = a.flightTimestamp || (a.ticketData?.f?.[0] ? parseFlightDateTimestamp(a.ticketData.f[0].dd, a.ticketData.f[0].dt) : 0);
+    const timeB = b.flightTimestamp || (b.ticketData?.f?.[0] ? parseFlightDateTimestamp(b.ticketData.f[0].dd, b.ticketData.f[0].dt) : 0);
+
+    if (sortMode === 'flightDate-asc') {
+      if (!timeA && !timeB) return 0;
+      if (!timeA) return 1;
+      if (!timeB) return -1;
+      return timeA - timeB;
+    } else if (sortMode === 'flightDate-desc') {
+      if (!timeA && !timeB) return 0;
+      if (!timeA) return 1;
+      if (!timeB) return -1;
+      return timeB - timeA;
+    } else if (sortMode === 'updatedAt-desc') {
+      const savedA = a.savedAtTimestamp || 0;
+      const savedB = b.savedAtTimestamp || 0;
+      return savedB - savedA;
+    } else if (sortMode === 'pnr-asc') {
+      return (a.pnr || '').localeCompare(b.pnr || '');
+    }
+    return 0;
+  });
 
   if (filtered.length === 0) {
     historyTableContainer.innerHTML = 
@@ -2362,30 +2432,40 @@ function renderHistoryList(query = '') {
     '<table class="history-table">' +
       '<thead>' +
         '<tr>' +
-          '<th style="width: 15%;">Mã đặt chỗ</th>' +
-          '<th style="width: 18%;">Hãng bay</th>' +
-          '<th style="width: 25%;">Hành trình</th>' +
-          '<th style="width: 20%;">Khách bay</th>' +
-          '<th style="width: 12%;">Thời gian</th>' +
-          '<th style="width: 10%; text-align: center;">Thao tác</th>' +
+          '<th style="width: 14%;">Mã đặt chỗ</th>' +
+          '<th style="width: 16%;">Hãng bay</th>' +
+          '<th style="width: 16%;">Ngày bay</th>' +
+          '<th style="width: 22%;">Hành trình</th>' +
+          '<th style="width: 18%;">Khách bay</th>' +
+          '<th style="width: 14%; text-align: center;">Thao tác</th>' +
         '</tr>' +
       '</thead>' +
       '<tbody>';
 
   filtered.forEach(item => {
+    // Get departure flight date display
+    let flightDisplay = item.flightDate || '';
+    if (!flightDisplay && item.ticketData?.f?.[0]?.dd) {
+      flightDisplay = item.ticketData.f[0].dd;
+    }
+    if (item.ticketData?.f?.[0]?.dt) {
+      flightDisplay = (flightDisplay ? flightDisplay + ' ' : '') + `(${item.ticketData.f[0].dt})`;
+    }
+    if (!flightDisplay) flightDisplay = '—';
+
     html += 
       '<tr>' +
         '<td><span class="history-pnr-badge">' + item.pnr + '</span></td>' +
         '<td><strong>' + item.airline + '</strong></td>' +
+        '<td style="font-size: 11.5px; font-weight: 600; color: #1e293b; white-space: nowrap;">' + flightDisplay + '</td>' +
         '<td style="font-size: 11.5px; line-height: 1.35; color: #334155;">' + (item.routes || '—') + '</td>' +
         '<td style="font-size: 11.5px; line-height: 1.35; color: #475569;">' + (item.passengers || '—') + '</td>' +
-        '<td style="font-size: 11px; color: #64748b;">' + item.updatedAt + '</td>' +
         '<td>' +
           '<div class="history-actions" style="justify-content: center;">' +
             '<button class="btn btn--primary btn--sm" data-action="load" data-pnr="' + item.pnr + '" title="Mở lại vé vào trình chỉnh sửa" style="padding: 4px 8px; font-size: 11px;">👁️ Mở</button>' +
             '<button class="btn btn--outline btn--sm" data-action="copy" data-pnr="' + item.pnr + '" title="Copy tóm tắt chuyến bay gửi Zalo" style="padding: 4px 8px; font-size: 11px;">📋</button>' +
             '<button class="btn btn--outline btn--sm" data-action="download-qr" data-pnr="' + item.pnr + '" title="Tải ảnh thẻ mã QR (Full HD)" style="padding: 4px 8px; font-size: 11px;">🔲</button>' +
-            (item.mobileUrl ? '<a href="' + item.mobileUrl + '" target="_blank" class="btn btn--outline btn--sm" title="Mở vé Mobile" style="padding: 4px 8px; font-size: 11px; text-decoration: none;">📱</a>' : '') +
+            (item.mobileUrl ? '<a href="' + (item.shortUrl || item.mobileUrl) + '" target="_blank" class="btn btn--outline btn--sm" title="Mở vé Mobile" style="padding: 4px 8px; font-size: 11px; text-decoration: none;">📱</a>' : '') +
             '<button class="btn btn--outline btn--sm" data-action="delete" data-pnr="' + item.pnr + '" title="Xóa vé này khỏi lịch sử" style="padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #fca5a5;">🗑️</button>' +
           '</div>' +
         '</td>' +
@@ -2589,7 +2669,7 @@ if (btnSaveBooking) {
       return;
     }
     const pnr = data.p;
-    const ok = saveTicketToHistory();
+    const ok = saveTicketToHistory({ promptOverwrite: true });
     if (!ok) return;
 
     showToast('⏳ Đang lưu [' + pnr + '] lên đám mây...');
@@ -2632,6 +2712,9 @@ if (modalHistory) {
 }
 if (historySearchInput) {
   historySearchInput.addEventListener('input', e => renderHistoryList(e.target.value));
+}
+if (historySortSelect) {
+  historySortSelect.addEventListener('change', () => renderHistoryList(historySearchInput ? historySearchInput.value : ''));
 }
 if (btnClearAllHistory) {
   btnClearAllHistory.addEventListener('click', clearAllHistory);
