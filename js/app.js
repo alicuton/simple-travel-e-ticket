@@ -154,6 +154,7 @@ const btnCopyMobileUrl      = $('btn-copy-mobile-url');
 const btnDownloadMobileImg  = $('btn-download-mobile-img');
 const btnCopyMobileImg      = $('btn-copy-mobile-img');
 const btnCopyFlightSummary  = $('btn-copy-flight-summary');
+const flightSummaryTextarea = $('flight-summary-textarea');
 const a4QRToggle            = $('a4-qr-toggle');
 
 // History Modal DOM
@@ -924,6 +925,34 @@ function syncA4QRBadge(root) {
 }
 
 // ─── Modal Mobile & QR Logic ────────────────────────────────
+function formatFlightSummary(data) {
+  if (!data) return '';
+  let txt = '✈️ VÉ ĐIỆN TỬ - SIMPLE TRAVEL\n';
+  txt += 'Mã đặt chỗ: ' + (data.p || '') + '\n';
+  txt += 'Hãng: ' + (data.a || '') + '\n\n';
+
+  (data.f || []).forEach(f => {
+    txt += '🛫 ' + (f.dd || '') + '\n';
+    txt += '   ' + (f.fn || '') + ' ' + (f.from || '') + ' - ' + (f.to || '') + ' ' + (f.dt || '') + ' ' + (f.at || '');
+    if (f.ad && f.dd && f.ad !== f.dd) {
+      txt += ' (+1 ngày: ' + f.ad + ')';
+    }
+    txt += '\n\n';
+  });
+
+  txt += 'Khách bay:\n';
+  (data.px || []).forEach((p, idx) => {
+    const tag = (p.t || '') + (p.t && p.g ? ' / ' : '') + (p.g || '');
+    txt += (idx + 1) + '. ' + p.n + (tag ? ' (' + tag + ')' : '') + '\n';
+  });
+
+  const linkToShare = state.shortUrl || state.mobileUrl;
+  if (linkToShare) {
+    txt += '\n📱 Xem vé online: ' + linkToShare + '\n';
+  }
+  return txt.trim();
+}
+
 function openMobileQRModal() {
   const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
   if (!iDoc || !iDoc.body) {
@@ -935,6 +964,12 @@ function openMobileQRModal() {
   state.ticketData = ticketData;
   state.mobileUrl = generateMobileTicketUrl(ticketData);
   mobileUrlInput.value = state.mobileUrl;
+
+  // Populate flight summary textarea
+  const summaryTxt = formatFlightSummary(ticketData);
+  if (flightSummaryTextarea) {
+    flightSummaryTextarea.value = summaryTxt;
+  }
 
   qrCodeContainer.innerHTML = '';
   const modalCanvas = document.createElement('canvas');
@@ -1114,41 +1149,28 @@ async function copyMobileImage() {
 }
 
 function copyFlightSummary() {
-  const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-  const data = state.ticketData || (iDoc ? extractTicketData(iDoc) : null);
-  if (!data) {
-    showToast('Chưa có thông tin vé!', 'error');
-    return;
-  }
-
-  let txt = '✈️ VÉ ĐIỆN TỬ - SIMPLE TRAVEL\n';
-  txt += 'Mã đặt chỗ: ' + (data.p || '') + '\n';
-  txt += 'Hãng: ' + (data.a || '') + '\n\n';
-
-  (data.f || []).forEach(f => {
-    txt += '🛫 ' + (f.dd || '') + '\n';
-    txt += '   ' + (f.fn || '') + ' ' + (f.from || '') + ' - ' + (f.to || '') + ' ' + (f.dt || '') + ' ' + (f.at || '');
-    if (f.ad && f.dd && f.ad !== f.dd) {
-      txt += ' (+1 ngày: ' + f.ad + ')';
+  let txt = flightSummaryTextarea ? flightSummaryTextarea.value : '';
+  if (!txt) {
+    const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+    const data = state.ticketData || (iDoc ? extractTicketData(iDoc) : null);
+    if (!data) {
+      showToast('Chưa có thông tin vé!', 'error');
+      return;
     }
-    txt += '\n\n';
-  });
-
-  txt += 'Khách bay:\n';
-  (data.px || []).forEach((p, idx) => {
-    const tag = (p.t || '') + (p.t && p.g ? ' / ' : '') + (p.g || '');
-    txt += (idx + 1) + '. ' + p.n + (tag ? ' (' + tag + ')' : '') + '\n';
-  });
-
-  const linkToShare = state.shortUrl || state.mobileUrl;
-  if (linkToShare) {
-    txt += '\n📱 Xem vé online: ' + linkToShare + '\n';
+    txt = formatFlightSummary(data);
+    if (flightSummaryTextarea) flightSummaryTextarea.value = txt;
   }
 
   navigator.clipboard.writeText(txt.trim()).then(() => {
     showToast('📋 Đã sao chép tóm tắt hành trình gửi khách!', 'success');
   }).catch(() => {
-    showToast('⚠️ Không thể sao chép tự động', 'error');
+    if (flightSummaryTextarea) {
+      flightSummaryTextarea.select();
+      document.execCommand('copy');
+      showToast('📋 Đã sao chép tóm tắt hành trình!', 'success');
+    } else {
+      showToast('⚠️ Không thể sao chép tự động', 'error');
+    }
   });
 }
 
@@ -2207,6 +2229,7 @@ function renderHistoryList(query = '') {
           '<div class="history-actions" style="justify-content: center;">' +
             '<button class="btn btn--primary btn--sm" data-action="load" data-pnr="' + item.pnr + '" title="Mở lại vé vào trình chỉnh sửa" style="padding: 4px 8px; font-size: 11px;">👁️ Mở</button>' +
             '<button class="btn btn--outline btn--sm" data-action="copy" data-pnr="' + item.pnr + '" title="Copy tóm tắt chuyến bay gửi Zalo" style="padding: 4px 8px; font-size: 11px;">📋</button>' +
+            '<button class="btn btn--outline btn--sm" data-action="copy-qr" data-pnr="' + item.pnr + '" title="Copy ảnh Mã QR vào clipboard" style="padding: 4px 8px; font-size: 11px;">🔲</button>' +
             (item.mobileUrl ? '<a href="' + item.mobileUrl + '" target="_blank" class="btn btn--outline btn--sm" title="Mở vé Mobile" style="padding: 4px 8px; font-size: 11px; text-decoration: none;">📱</a>' : '') +
             '<button class="btn btn--outline btn--sm" data-action="delete" data-pnr="' + item.pnr + '" title="Xóa vé này khỏi lịch sử" style="padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #fca5a5;">🗑️</button>' +
           '</div>' +
@@ -2226,11 +2249,47 @@ function renderHistoryList(query = '') {
         loadTicketFromHistory(pnr);
       } else if (action === 'copy') {
         copyFlightSummaryByPnr(pnr);
+      } else if (action === 'copy-qr') {
+        copyQRByPnr(pnr);
       } else if (action === 'delete') {
         deleteHistoryItem(pnr);
       }
     });
   });
+}
+
+async function copyQRByPnr(pnr) {
+  const history = getTicketHistory();
+  const item = history.find(h => h.pnr === pnr);
+  if (!item) return;
+
+  const url = item.mobileUrl;
+  if (!url) {
+    showToast('Chưa có link vé để tạo mã QR', 'error');
+    return;
+  }
+
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 400;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, 400, 400);
+    drawStylizedLeafQR(canvas, url, { size: 400 });
+
+    canvas.toBlob(async blob => {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        showToast('🔲 Đã copy mã QR vé [' + pnr + '] vào clipboard!', 'success');
+      } catch (err) {
+        showToast('Trình duyệt không hỗ trợ copy ảnh trực tiếp', 'error');
+      }
+    });
+  } catch (err) {
+    console.error(err);
+    showToast('❌ Lỗi copy mã QR: ' + err.message, 'error');
+  }
 }
 
 function loadTicketFromHistory(pnr) {
@@ -2350,6 +2409,29 @@ if (btnClearAllHistory) {
   btnClearAllHistory.addEventListener('click', clearAllHistory);
 }
 
+// ─── Collapsible Panels ──────────────────────────────────────
+function initCollapsiblePanels() {
+  document.querySelectorAll('.panel--collapsible .panel__header').forEach(header => {
+    header.addEventListener('click', e => {
+      if (e.target.closest('button, input, select, textarea, a, label')) return;
+      const panel = header.closest('.panel');
+      if (panel) {
+        panel.classList.toggle('collapsed');
+      }
+    });
+    header.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        const panel = header.closest('.panel');
+        if (panel) {
+          panel.classList.toggle('collapsed');
+        }
+      }
+    });
+  });
+}
+
 // ─── Init ───────────────────────────────────────────────────
 buildPresets();
 renderLuuYTemplates();
+initCollapsiblePanels();

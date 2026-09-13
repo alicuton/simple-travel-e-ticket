@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3.4">
+  <link rel="stylesheet" href="css/style.css?v=3.5">
 </head>
 <body>
 
@@ -69,157 +69,185 @@
       </div>
 
       <!-- Panel: Colors (hidden until file loaded) -->
-      <div class="panel" id="panel-colors" style="display:none;">
-        <div class="panel__header">
+      <div class="panel panel--collapsible" id="panel-colors" style="display:none;">
+        <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">2</span>
-          <div>
+          <div style="flex:1;">
             <div class="panel__title">Màu thương hiệu</div>
             <div class="panel__desc">Chọn màu chủ đạo cho vé</div>
           </div>
+          <span class="panel__chevron">▾</span>
         </div>
-        <span class="ctrl-label">Màu gợi ý</span>
-        <div class="preset-grid" id="preset-grid"></div>
-        <div class="color-picker-row">
-          <input type="color" id="color-picker" value="#F5A623" class="color-picker-input">
-          <input type="text" id="color-hex" value="#F5A623" class="color-hex-input" maxlength="7" spellcheck="false">
-          <button class="btn btn--outline btn--sm" id="btn-reset" title="Reset về Simple Travel Orange">↺</button>
-        </div>
-        <div class="toggle-row">
-          <label class="toggle-switch">
-            <input type="checkbox" id="gradient-toggle">
-            <span class="toggle-slider"></span>
-          </label>
-          <span class="toggle-label">Gradient header</span>
+        <div class="panel__body">
+          <span class="ctrl-label">Màu gợi ý</span>
+          <div class="preset-grid" id="preset-grid"></div>
+          <div class="color-picker-row">
+            <input type="color" id="color-picker" value="#F5A623" class="color-picker-input">
+            <input type="text" id="color-hex" value="#F5A623" class="color-hex-input" maxlength="7" spellcheck="false">
+            <button class="btn btn--outline btn--sm" id="btn-reset" title="Reset về Simple Travel Orange">↺</button>
+          </div>
+          <div class="toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="gradient-toggle">
+              <span class="toggle-slider"></span>
+            </label>
+            <span class="toggle-label">Gradient header</span>
+          </div>
         </div>
       </div>
 
       <!-- Panel: Font -->
-      <div class="panel" id="panel-font" style="display:none;">
-        <div class="panel__header">
+      <div class="panel panel--collapsible" id="panel-font" style="display:none;">
+        <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">3</span>
+          <div style="flex:1;">
+            <div class="panel__title">Phông chữ &amp; Cỡ chữ</div>
+            <div class="panel__desc">Chọn font &amp; chỉnh cỡ chữ cho vé</div>
+          </div>
+          <span class="panel__chevron">▾</span>
+        </div>
+        <div class="panel__body">
+          <div style="margin-bottom:12px;">
+            <label class="ctrl-label">Phông chữ</label>
+            <select class="font-select" id="font-select">
+              <option value="">— Giữ font gốc —</option>
+              <option value="Inter" selected>Inter</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Be Vietnam Pro">Be Vietnam Pro</option>
+              <option value="Montserrat">Montserrat</option>
+              <option value="Nunito">Nunito</option>
+              <option value="Quicksand">Quicksand</option>
+              <option value="Sarabun">Sarabun</option>
+              <option value="Lexend">Lexend</option>
+            </select>
+          </div>
+
+          <!-- Font scale moved from toolbar -->
           <div>
-            <div class="panel__title">Phông chữ</div>
-            <div class="panel__desc">Chọn font cho toàn bộ vé</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <label class="ctrl-label" style="margin:0;">Cỡ chữ toàn vé</label>
+              <span class="fontscale-inline__value" id="fontscale-value" style="font-weight:700;color:var(--brand-primary);font-size:12px;">90%</span>
+            </div>
+            <div class="fontscale-sidebar-row" style="display:flex;align-items:center;gap:8px;">
+              <button type="button" class="btn btn--outline btn--sm" id="fontscale-decrease" style="padding:4px 10px;font-size:14px;font-weight:700;">−</button>
+              <input type="range" id="fontscale-slider" min="50" max="150" value="90" step="5" style="flex:1;cursor:pointer;">
+              <button type="button" class="btn btn--outline btn--sm" id="fontscale-increase" style="padding:4px 10px;font-size:14px;font-weight:700;">+</button>
+              <button type="button" class="btn btn--outline btn--sm" id="btn-fontscale-reset" title="Đặt lại 90%" style="padding:4px 8px;font-size:11px;">↺</button>
+            </div>
           </div>
         </div>
-        <select class="font-select" id="font-select">
-          <option value="">— Giữ font gốc —</option>
-          <option value="Inter" selected>Inter</option>
-          <option value="Roboto">Roboto</option>
-          <option value="Open Sans">Open Sans</option>
-          <option value="Be Vietnam Pro">Be Vietnam Pro</option>
-          <option value="Montserrat">Montserrat</option>
-          <option value="Nunito">Nunito</option>
-          <option value="Quicksand">Quicksand</option>
-          <option value="Sarabun">Sarabun</option>
-          <option value="Lexend">Lexend</option>
-        </select>
       </div>
 
       <!-- Panel: Airline & Logo -->
-      <div class="panel" id="panel-airline" style="display:none;">
-        <div class="panel__header">
+      <div class="panel panel--collapsible" id="panel-airline" style="display:none;">
+        <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">4</span>
-          <div>
+          <div style="flex:1;">
             <div class="panel__title">Hãng bay &amp; Logo</div>
             <div class="panel__desc">Tải logo riêng &amp; đổi tên hãng</div>
           </div>
+          <span class="panel__chevron">▾</span>
         </div>
-
-        <!-- Custom Upload Box -->
-        <div id="airline-upload-wrap" style="margin-bottom:12px;">
-          <label class="ctrl-label">Tải logo riêng (.png, .jpg, .svg)</label>
-          <div class="airline-upload-zone" id="airline-upload-zone">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--brand-primary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <span style="font-size:12px;font-weight:600;">Chọn file ảnh logo hãng</span>
-            <input type="file" id="airline-logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
+        <div class="panel__body">
+          <!-- Custom Upload Box -->
+          <div id="airline-upload-wrap" style="margin-bottom:12px;">
+            <label class="ctrl-label">Tải logo riêng (.png, .jpg, .svg)</label>
+            <div class="airline-upload-zone" id="airline-upload-zone">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--brand-primary);"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span style="font-size:12px;font-weight:600;">Chọn file ảnh logo hãng</span>
+              <input type="file" id="airline-logo-input" accept="image/png,image/jpeg,image/svg+xml,image/webp" hidden>
+            </div>
+            <div style="font-size:10px;color:var(--brand-muted);margin-top:4px;line-height:1.4;">
+              * Kích thước tự động tối ưu (tối đa 120×48px) — không làm lệch layout.
+            </div>
           </div>
-          <div style="font-size:10px;color:var(--brand-muted);margin-top:4px;line-height:1.4;">
-            * Kích thước tự động tối ưu (tối đa 120×48px) — không làm lệch layout.
-          </div>
-        </div>
 
-        <!-- Preview of uploaded logo -->
-        <div id="airline-logo-preview-row" style="display:none;align-items:center;gap:10px;padding:8px 10px;background:var(--brand-surface);border:1px solid var(--brand-border);border-radius:var(--radius-sm);margin-bottom:12px;">
-          <div style="width:70px;height:40px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:2px;">
-            <img id="airline-logo-preview-img" src="" style="max-width:100%;max-height:100%;object-fit:contain;">
+          <!-- Preview of uploaded logo -->
+          <div id="airline-logo-preview-row" style="display:none;align-items:center;gap:10px;padding:8px 10px;background:var(--brand-surface);border:1px solid var(--brand-border);border-radius:var(--radius-sm);margin-bottom:12px;">
+            <div style="width:70px;height:40px;background:#fff;border:1px solid #e2e8f0;border-radius:4px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:2px;">
+              <img id="airline-logo-preview-img" src="" style="max-width:100%;max-height:100%;object-fit:contain;">
+            </div>
+            <div style="flex:1;min-width:0;">
+              <span id="airline-logo-name-display" style="font-size:11px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Logo tùy chỉnh</span>
+              <span style="font-size:10px;color:#059669;font-weight:500;">✓ Đã sẵn sàng</span>
+            </div>
+            <button class="btn btn--outline btn--sm" id="btn-airline-clear" title="Xóa logo này" style="padding:3px 6px;">✕</button>
           </div>
-          <div style="flex:1;min-width:0;">
-            <span id="airline-logo-name-display" style="font-size:11px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Logo tùy chỉnh</span>
-            <span style="font-size:10px;color:#059669;font-weight:500;">✓ Đã sẵn sàng</span>
+
+          <!-- Airline Name text -->
+          <div style="margin-bottom:12px;">
+            <label class="ctrl-label">Tên hiển thị hãng bay</label>
+            <input type="text" id="airline-name-input" placeholder="VD: VIETJET AIR" class="font-select" style="padding:7px 10px;font-size:12px;font-weight:600;" spellcheck="false">
           </div>
-          <button class="btn btn--outline btn--sm" id="btn-airline-clear" title="Xóa logo này" style="padding:3px 6px;">✕</button>
-        </div>
 
-        <!-- Airline Name text -->
-        <div style="margin-bottom:12px;">
-          <label class="ctrl-label">Tên hiển thị hãng bay</label>
-          <input type="text" id="airline-name-input" placeholder="VD: VIETJET AIR" class="font-select" style="padding:7px 10px;font-size:12px;font-weight:600;" spellcheck="false">
-        </div>
-
-        <div class="btn-row">
-          <button class="btn btn--primary btn--sm" id="btn-airline-apply">✓ Đổi logo vé</button>
-          <button class="btn btn--outline btn--sm" id="btn-airline-reset">↺ Khôi phục gốc</button>
+          <div class="btn-row">
+            <button class="btn btn--primary btn--sm" id="btn-airline-apply">✓ Đổi logo vé</button>
+            <button class="btn btn--outline btn--sm" id="btn-airline-reset">↺ Khôi phục gốc</button>
+          </div>
         </div>
       </div>
 
       <!-- Panel: LƯU Ý -->
-      <div class="panel" id="panel-luu-y" style="display:none;">
-        <div class="panel__header">
+      <div class="panel panel--collapsible" id="panel-luu-y" style="display:none;">
+        <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">5</span>
-          <div>
+          <div style="flex:1;">
             <div class="panel__title">Phần LƯU Ý</div>
             <div class="panel__desc">Ẩn/hiện &amp; chỉnh sửa nội dung</div>
           </div>
+          <span class="panel__chevron">▾</span>
         </div>
-        <div class="luu-y-toggle-row">
-          <label class="toggle-switch">
-            <input type="checkbox" id="luu-y-toggle" checked>
-            <span class="toggle-slider"></span>
-          </label>
-          <div>
-            <div class="luu-y-toggle-text">Hiển thị trên vé</div>
-            <div class="luu-y-toggle-hint">Bỏ tick để ẩn khi xuất</div>
-          </div>
-        </div>
-
-        <!-- Rich formatting toolbar for LƯU Ý -->
-        <div class="luu-y-toolbar" id="luu-y-toolbar">
-          <button type="button" class="luu-y-tb-btn" data-cmd="bold" title="In đậm"><b>B</b></button>
-          <button type="button" class="luu-y-tb-btn" data-cmd="italic" title="In nghiêng"><i>I</i></button>
-          <button type="button" class="luu-y-tb-btn" data-cmd="underline" title="Gạch chân"><u>U</u></button>
-          <span style="width:1px;height:14px;background:var(--brand-border);margin:0 2px;"></span>
-          <button type="button" class="luu-y-tb-btn" data-cmd="insertUnorderedList" title="Danh sách chấm">• List</button>
-          <span style="width:1px;height:14px;background:var(--brand-border);margin:0 2px;"></span>
-          <button type="button" class="luu-y-tb-btn" data-cmd="color" data-val="#c0392b" title="Chữ đỏ" style="color:#c0392b;font-weight:700;">Đỏ</button>
-          <button type="button" class="luu-y-tb-btn" data-cmd="color" data-val="#1C1917" title="Chữ đen" style="color:#1C1917;font-weight:700;">Đen</button>
-        </div>
-
-        <!-- Rich ContentEditable Editor for LƯU Ý: Preserves all format when copying/pasting -->
-        <div id="luu-y-editor" class="luu-y-editor" contenteditable="true" spellcheck="false"></div>
-
-        <div class="btn-row" style="margin-top:10px;">
-          <button class="btn btn--primary btn--sm" id="btn-luu-y-apply">✓ Áp dụng</button>
-          <button class="btn btn--outline btn--sm" id="btn-luu-y-reset">↺ Gốc</button>
-        </div>
-
-        <!-- Section: Saved Templates for Quick Selection (VI, EN, etc.) -->
-        <div class="luu-y-templates-section">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-            <span class="ctrl-label" style="margin:0;">Bản lưu mẫu (Chọn nhanh)</span>
-            <button type="button" class="btn btn--primary btn--sm" id="btn-luu-y-update-template" style="display:none;font-size:10.5px;padding:3px 8px;" title="Lưu các chỉnh sửa vừa soạn vào mẫu đang chọn">💾 Lưu sửa đổi vào mẫu này</button>
-          </div>
-          <div id="luu-y-template-list" class="luu-y-template-list">
-            <!-- Rendered dynamically in app.js -->
+        <div class="panel__body">
+          <div class="luu-y-toggle-row">
+            <label class="toggle-switch">
+              <input type="checkbox" id="luu-y-toggle" checked>
+              <span class="toggle-slider"></span>
+            </label>
+            <div>
+              <div class="luu-y-toggle-text">Hiển thị trên vé</div>
+              <div class="luu-y-toggle-hint">Bỏ tick để ẩn khi xuất</div>
+            </div>
           </div>
 
-          <!-- Add new template row -->
-          <div class="luu-y-add-template-row">
-            <input type="text" id="luu-y-new-template-name" placeholder="Tên mẫu mới (VD: Vé Quốc Tế...)" class="font-select" style="padding:6px 8px;font-size:11px;flex:1;" spellcheck="false">
-            <button type="button" class="btn btn--outline btn--sm" id="btn-luu-y-add-template" title="Lưu nội dung đang soạn thành mẫu mới">+ Lưu mẫu mới</button>
+          <!-- Rich formatting toolbar for LƯU Ý -->
+          <div class="luu-y-toolbar" id="luu-y-toolbar">
+            <button type="button" class="luu-y-tb-btn" data-cmd="bold" title="In đậm"><b>B</b></button>
+            <button type="button" class="luu-y-tb-btn" data-cmd="italic" title="In nghiêng"><i>I</i></button>
+            <button type="button" class="luu-y-tb-btn" data-cmd="underline" title="Gạch chân"><u>U</u></button>
+            <span style="width:1px;height:14px;background:var(--brand-border);margin:0 2px;"></span>
+            <button type="button" class="luu-y-tb-btn" data-cmd="insertUnorderedList" title="Danh sách chấm">• List</button>
+            <span style="width:1px;height:14px;background:var(--brand-border);margin:0 2px;"></span>
+            <button type="button" class="luu-y-tb-btn" data-cmd="color" data-val="#c0392b" title="Chữ đỏ" style="color:#c0392b;font-weight:700;">Đỏ</button>
+            <button type="button" class="luu-y-tb-btn" data-cmd="color" data-val="#1C1917" title="Chữ đen" style="color:#1C1917;font-weight:700;">Đen</button>
           </div>
-          <div style="display:flex;justify-content:flex-end;margin-top:6px;">
-            <button type="button" id="btn-luu-y-reset-all-templates" style="background:none;border:none;color:var(--brand-muted);font-size:10px;cursor:pointer;text-decoration:underline;">↺ Khôi phục 3 mẫu gốc</button>
+
+          <!-- Rich ContentEditable Editor for LƯU Ý: Preserves all format when copying/pasting -->
+          <div id="luu-y-editor" class="luu-y-editor" contenteditable="true" spellcheck="false"></div>
+
+          <div class="btn-row" style="margin-top:10px;">
+            <button class="btn btn--primary btn--sm" id="btn-luu-y-apply">✓ Áp dụng</button>
+            <button class="btn btn--outline btn--sm" id="btn-luu-y-reset">↺ Gốc</button>
+          </div>
+
+          <!-- Section: Saved Templates for Quick Selection (VI, EN, etc.) -->
+          <div class="luu-y-templates-section">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span class="ctrl-label" style="margin:0;">Bản lưu mẫu (Chọn nhanh)</span>
+              <button type="button" class="btn btn--primary btn--sm" id="btn-luu-y-update-template" style="display:none;font-size:10.5px;padding:3px 8px;" title="Lưu các chỉnh sửa vừa soạn vào mẫu đang chọn">💾 Lưu sửa đổi vào mẫu này</button>
+            </div>
+            <div id="luu-y-template-list" class="luu-y-template-list">
+              <!-- Rendered dynamically in app.js -->
+            </div>
+
+            <!-- Add new template row -->
+            <div class="luu-y-add-template-row">
+              <input type="text" id="luu-y-new-template-name" placeholder="Tên mẫu mới (VD: Vé Quốc Tế...)" class="font-select" style="padding:6px 8px;font-size:11px;flex:1;" spellcheck="false">
+              <button type="button" class="btn btn--outline btn--sm" id="btn-luu-y-add-template" title="Lưu nội dung đang soạn thành mẫu mới">+ Lưu mẫu mới</button>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:6px;">
+              <button type="button" id="btn-luu-y-reset-all-templates" style="background:none;border:none;color:var(--brand-muted);font-size:10px;cursor:pointer;text-decoration:underline;">↺ Khôi phục 3 mẫu gốc</button>
+            </div>
           </div>
         </div>
       </div>
@@ -243,44 +271,33 @@
 
       <!-- Toolbar (hidden until file loaded) -->
       <div class="preview-toolbar" id="preview-toolbar" style="display:none;">
-        <button class="btn btn--pdf" id="btn-pdf">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          PDF A4
-        </button>
-        <button class="btn btn--img" id="btn-img">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          Tải ảnh
-        </button>
-        <button class="btn btn--copy" id="btn-copy-image">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          Copy ảnh
-        </button>
-        <button class="btn btn--mobile-qr" id="btn-mobile-qr" title="Xuất vé Mobile & Tạo mã QR">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
-          📱 Vé Mobile &amp; QR
-        </button>
-        <button class="btn btn--save-booking" id="btn-save-booking" title="Lưu thông tin booking chính thức vào danh sách">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-          💾 Lưu booking
-        </button>
-        <button class="btn btn--outline" id="btn-toolbar-history" title="Danh sách các mã đặt chỗ đã lưu">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          📂 Lịch sử
-        </button>
-        <span class="toolbar-divider"></span>
-        <button class="btn btn--edit" id="btn-toggle-edit">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          <span>Soạn thảo</span>
-        </button>
+        <div class="preview-toolbar__left" style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn--pdf" id="btn-pdf">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            PDF A4
+          </button>
+          <button class="btn btn--img" id="btn-img">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            Tải ảnh
+          </button>
+          <button class="btn btn--copy" id="btn-copy-image">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            Copy ảnh
+          </button>
+          <button class="btn btn--mobile-qr" id="btn-mobile-qr" title="Xuất vé Mobile & Tạo mã QR">
+            Vé Mobile &amp; QR
+          </button>
+        </div>
 
-        <!-- Font scale (right side) -->
-        <div class="fontscale-inline">
-          <span class="fontscale-inline__label">Cỡ chữ:</span>
-          <button class="fontscale-inline__btn" id="fontscale-decrease">−</button>
-          <input type="range" id="fontscale-slider" min="50" max="150" value="90" step="5" class="fontscale-inline__slider">
-          <button class="fontscale-inline__btn" id="fontscale-increase">+</button>
-          <span class="fontscale-inline__value" id="fontscale-value">90%</span>
-          <button class="fontscale-inline__reset" id="btn-fontscale-reset">↺</button>
+        <!-- Right side of toolbar: Save booking & Edit mode -->
+        <div class="preview-toolbar__right" style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <button class="btn btn--save-booking" id="btn-save-booking" title="Lưu thông tin booking chính thức vào danh sách">
+            Lưu booking
+          </button>
+          <button class="btn btn--edit" id="btn-toggle-edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            <span>Soạn thảo</span>
+          </button>
         </div>
       </div>
 
@@ -319,7 +336,7 @@
 
   <!-- ===== MODAL: MOBILE & QR CODE ===== -->
   <div class="modal-backdrop" id="modal-mobile-qr" style="display:none;">
-    <div class="modal-card">
+    <div class="modal-card" style="max-width: 960px; width: 95%;">
       <div class="modal-header">
         <div class="modal-title">
           <span style="font-size: 22px;">📱</span>
@@ -330,72 +347,74 @@
         </div>
         <button class="modal-close" id="btn-modal-close" title="Đóng">✕</button>
       </div>
-      <div class="modal-body">
-        <!-- Left: Live Phone Mockup -->
-        <div class="phone-mockup-wrap">
-          <div class="phone-mockup">
-            <div class="phone-speaker"></div>
-            <iframe id="mobile-preview-iframe" class="phone-screen" sandbox="allow-same-origin allow-scripts allow-modals"></iframe>
+      <div class="modal-body modal-body--two-col">
+        <!-- Left: Realistic Mobile Ticket Preview with 2 Action Buttons -->
+        <div class="mobile-preview-col">
+          <div class="mobile-preview-frame">
+            <iframe id="mobile-preview-iframe" class="mobile-preview-screen" sandbox="allow-same-origin allow-scripts allow-modals"></iframe>
           </div>
-          <span class="phone-label">Mô phỏng hiển thị trên smartphone</span>
+          <div class="mobile-preview-actions">
+            <button class="btn btn--primary" id="btn-download-mobile-img" style="flex:1;">
+              ⬇️ Tải ảnh
+            </button>
+            <button class="btn btn--copy" id="btn-copy-mobile-img" style="flex:1;">
+              📋 Sao chép
+            </button>
+          </div>
         </div>
 
-        <!-- Right: Actions & QR Code -->
+        <!-- Right: Actions (Row 1: QR & Toggle, Row 2: Link & Summary) -->
         <div class="modal-actions-col">
-          <!-- QR Card -->
-          <div class="qr-preview-card">
+          <!-- Row 1: QR Code + Download Button + A4 QR Toggle -->
+          <div class="modal-section-card qr-section-card">
             <div class="qr-canvas-wrap" id="qr-code-container">
               <!-- QRCode generated here -->
             </div>
-            <div class="qr-info">
-              <span class="qr-title">Mã QR xem vé trực tuyến</span>
-              <p class="qr-desc">Quét bằng <strong>Camera</strong> hoặc <strong>Zalo</strong> để mở vé ngay trên điện thoại (không cần cài app).</p>
-              <div class="qr-btn-row">
+            <div class="qr-section-details">
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span class="qr-title" style="margin:0;">Mã QR xem vé trực tuyến</span>
                 <button class="btn btn--outline btn--sm" id="btn-download-qr">
                   ⬇️ Tải mã QR (PNG)
                 </button>
               </div>
+              <p class="qr-desc" style="margin:6px 0 10px;">
+                Quét bằng <strong>Camera</strong> hoặc <strong>Zalo</strong> để mở vé ngay trên điện thoại (không cần cài app).
+              </p>
+
+              <!-- Option: Show QR on A4 Ticket (integrated into QR box) -->
+              <div class="a4-qr-toggle-inline">
+                <label class="toggle-switch">
+                  <input type="checkbox" id="a4-qr-toggle" checked>
+                  <span class="toggle-slider"></span>
+                </label>
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:var(--brand-dark);">Hiển thị mã QR trên vé A4</div>
+                  <div style="font-size:11px;color:var(--brand-muted);">Tự động chèn mã QR vào phần đầu vé in / xuất PDF</div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <!-- Share Link Box -->
-          <div class="share-link-card">
-            <label class="ctrl-label">Đường dẫn vé trực tuyến (Vĩnh viễn)</label>
-            <div class="share-link-row">
-              <input type="text" id="mobile-url-input" readonly class="share-link-input" spellcheck="false">
-              <button class="btn btn--outline btn--sm" id="btn-copy-mobile-url" title="Sao chép link đầy đủ">📋 Copy link</button>
+          <!-- Row 2: Online Ticket Link & Flight Summary -->
+          <div class="modal-section-card share-section-card">
+            <!-- Line 1: Ticket Link -->
+            <div style="margin-bottom:12px;">
+              <label class="ctrl-label" style="font-size:12px;font-weight:700;color:var(--brand-dark);margin-bottom:4px;">Đường dẫn vé trực tuyến</label>
+              <div class="share-link-row">
+                <input type="text" id="mobile-url-input" readonly class="share-link-input" spellcheck="false">
+                <button class="btn btn--outline btn--sm" id="btn-copy-mobile-url" title="Sao chép link vé trực tuyến" style="white-space:nowrap;">📋 Copy link</button>
+              </div>
             </div>
 
-            <button class="btn btn--outline btn--sm" id="btn-copy-flight-summary" style="width:100%;margin-top:10px;">
-              📋 Copy tóm tắt hành trình (gửi Zalo)
-            </button>
-          </div>
-
-          <!-- Mobile Export Buttons -->
-          <div class="mobile-export-card">
-            <label class="ctrl-label">Xuất ảnh vé điện thoại (Full HD 1080×1920)</label>
-            <div class="mobile-export-btns">
-              <button class="btn btn--primary" id="btn-download-mobile-img" style="flex:1;">
-                📸 Tải ảnh Vé Mobile
-              </button>
-              <button class="btn btn--copy" id="btn-copy-mobile-img">
-                📋 Copy ảnh Mobile
-              </button>
-            </div>
-            <p style="font-size:11px;color:var(--brand-muted);margin-top:6px;line-height:1.4;">
-              💡 File ảnh được tối ưu chuẩn cho màn hình điện thoại, gửi qua Zalo / Messenger đọc rất rõ ràng và sắc nét.
-            </p>
-          </div>
-
-          <!-- Option: Show QR on A4 Ticket -->
-          <div class="a4-qr-toggle-card">
-            <label class="toggle-switch">
-              <input type="checkbox" id="a4-qr-toggle" checked>
-              <span class="toggle-slider"></span>
-            </label>
+            <!-- Line 2: Flight Summary Textarea with Copy Button -->
             <div>
-              <div style="font-size:13px;font-weight:600;color:var(--brand-dark);">Hiển thị mã QR trên vé A4</div>
-              <div style="font-size:11px;color:var(--brand-muted);">Tự động chèn mã QR vào phần đầu vé in / xuất PDF</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <label class="ctrl-label" style="font-size:12px;font-weight:700;color:var(--brand-dark);margin:0;">Tóm tắt hành trình bay (Gửi Zalo/SMS)</label>
+                <button class="btn btn--outline btn--sm" id="btn-copy-flight-summary" style="padding:3px 8px;font-size:11px;white-space:nowrap;">
+                  📋 Copy tóm tắt
+                </button>
+              </div>
+              <textarea id="flight-summary-textarea" readonly class="flight-summary-textarea" rows="4" spellcheck="false"></textarea>
             </div>
           </div>
         </div>
@@ -435,6 +454,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=3.6"></script>
+  <script src="js/app.js?v=3.7"></script>
 </body>
 </html>

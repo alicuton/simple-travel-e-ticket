@@ -142,11 +142,37 @@ input, textarea, select { font-family: inherit; }
   line-height: 1.4;
 }
 
+/* Collapsible Panels */
+.panel--collapsible .panel__header {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity var(--transition);
+}
+.panel--collapsible .panel__header:hover {
+  opacity: 0.8;
+}
+.panel__chevron {
+  margin-left: auto;
+  font-size: 14px;
+  color: var(--brand-muted);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+.panel.collapsed .panel__body {
+  display: none;
+}
+.panel.collapsed .panel__header {
+  margin-bottom: 0;
+}
+.panel.collapsed .panel__chevron {
+  transform: rotate(-90deg);
+}
+
 /* ─── Upload Zone ────────────────────────────────────────── */
 .upload-zone {
   border: 2px dashed var(--brand-border);
   border-radius: var(--radius-md);
-  padding: 28px 16px;
+  padding: 12px 14px;
   text-align: center;
   cursor: pointer;
   transition: all var(--transition);
@@ -157,9 +183,10 @@ input, textarea, select { font-family: inherit; }
   border-color: var(--brand-primary);
   background: var(--brand-light);
 }
-.upload-zone__icon { color: var(--brand-primary); margin-bottom: 8px; }
-.upload-zone__text { font-size: 13px; font-weight: 600; color: var(--brand-text); }
-.upload-zone__hint { font-size: 11px; color: var(--brand-muted); margin-top: 4px; }
+.upload-zone__icon { color: var(--brand-primary); margin-bottom: 4px; display: flex; justify-content: center; }
+.upload-zone__icon svg { width: 26px; height: 26px; }
+.upload-zone__text { font-size: 12.5px; font-weight: 600; color: var(--brand-text); }
+.upload-zone__hint { font-size: 11px; color: var(--brand-muted); margin-top: 2px; }
 
 /* File Info */
 .file-info {
@@ -798,52 +825,51 @@ input, textarea, select { font-family: inherit; }
 .modal-body {
   padding: 20px 24px;
   overflow-y: auto;
-  display: flex;
-  gap: 28px;
 }
 
-/* Left: Phone Mockup Frame */
-.phone-mockup-wrap {
-  width: 290px;
+/* Two-column layout for Mobile & QR Modal */
+.modal-body--two-col {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* Left: Mobile Ticket Preview Frame & Actions */
+.mobile-preview-col {
+  width: 330px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  gap: 12px;
 }
-.phone-mockup {
-  width: 280px;
-  height: 520px;
-  border: 10px solid #1e293b;
-  border-radius: 36px;
-  background: #f8fafc;
-  box-shadow: 0 16px 36px rgba(0,0,0,0.2), inset 0 0 0 2px rgba(255,255,255,0.1);
-  position: relative;
+.mobile-preview-frame {
+  width: 100%;
+  height: 500px;
+  border: 1.5px solid var(--brand-border);
+  border-radius: 16px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.07);
 }
-.phone-speaker {
-  position: absolute;
-  top: 8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 50px;
-  height: 4px;
-  background: #334155;
-  border-radius: 2px;
-  z-index: 10;
-}
-.phone-screen {
+.mobile-preview-screen {
   width: 100%;
   height: 100%;
   border: none;
   background: #f8fafc;
 }
-.phone-label {
-  font-size: 11px;
-  color: var(--brand-muted);
-  text-align: center;
+.mobile-preview-actions {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+.mobile-preview-actions .btn {
+  padding: 9px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Right: Actions Column */
@@ -855,14 +881,17 @@ input, textarea, select { font-family: inherit; }
   gap: 16px;
 }
 
-/* QR Code Card */
-.qr-preview-card {
-  display: flex;
-  gap: 16px;
+.modal-section-card {
   padding: 16px;
   background: var(--brand-surface);
   border: 1px solid var(--brand-border);
   border-radius: 12px;
+}
+
+/* QR Code Section Card */
+.qr-section-card {
+  display: flex;
+  gap: 16px;
   align-items: center;
 }
 .qr-canvas-wrap {
@@ -884,39 +913,42 @@ input, textarea, select { font-family: inherit; }
   height: 100% !important;
   object-fit: contain;
 }
-.qr-info {
+.qr-section-details {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .qr-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--brand-dark);
   display: block;
-  margin-bottom: 4px;
 }
 .qr-desc {
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--brand-text);
   line-height: 1.45;
-  margin: 0 0 10px;
-}
-.qr-btn-row {
-  display: flex;
-  gap: 8px;
 }
 
-/* Share Link Card */
-.share-link-card {
-  padding: 14px 16px;
-  background: #f8fafc;
+.a4-qr-toggle-inline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #ffffff;
   border: 1px solid var(--brand-border);
-  border-radius: 12px;
+  border-radius: 8px;
+}
+
+/* Share & Flight Summary Section Card */
+.share-section-card {
+  display: flex;
+  flex-direction: column;
 }
 .share-link-row {
   display: flex;
   gap: 8px;
-  margin-top: 4px;
 }
 .share-link-input {
   flex: 1;
@@ -924,34 +956,28 @@ input, textarea, select { font-family: inherit; }
   background: #ffffff;
   border: 1px solid var(--brand-border);
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  padding: 7px 10px;
   font-size: 12px;
   color: var(--brand-dark);
   font-family: monospace;
 }
-
-/* Mobile Export Card */
-.mobile-export-card {
-  padding: 14px 16px;
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 12px;
-}
-.mobile-export-btns {
-  display: flex;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-/* A4 QR Toggle Card */
-.a4-qr-toggle-card {
-  padding: 12px 16px;
-  background: #ffffff;
+.flight-summary-textarea {
+  width: 100%;
+  height: 120px;
+  padding: 8px 10px;
   border: 1px solid var(--brand-border);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+  border-radius: var(--radius-sm);
+  background: #ffffff;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--brand-dark);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  resize: none;
+  box-sizing: border-box;
+  outline: none;
+}
+.flight-summary-textarea:focus {
+  border-color: var(--brand-primary);
 }
 
 /* A4 Ticket Embedded QR Badge */
@@ -980,13 +1006,14 @@ input, textarea, select { font-family: inherit; }
   display: block;
 }
 
-@media (max-width: 768px) {
-  .modal-body {
+@media (max-width: 840px) {
+  .modal-body--two-col {
     flex-direction: column;
     align-items: center;
   }
-  .phone-mockup-wrap {
+  .mobile-preview-col {
     width: 100%;
+    max-width: 360px;
   }
 }
 

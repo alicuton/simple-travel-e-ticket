@@ -79,37 +79,38 @@
     }
     /* PNR Highlight */
     .pnr-banner {
-      margin: 14px 16px;
-      background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
-      border: 1.5px dashed var(--sp);
-      border-radius: 14px;
-      padding: 12px 16px;
+      margin: 10px 16px 6px;
+      background: transparent;
+      border: none;
+      padding: 6px 4px;
       display: flex;
       align-items: center;
       justify-content: space-between;
     }
     .pnr-left .pnr-label {
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      color: #92400E;
+      color: #0F172A;
     }
     .pnr-left .pnr-code {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 800;
       letter-spacing: 1px;
-      color: var(--sp-dark);
+      color: var(--sp);
       margin-top: 2px;
+      line-height: 1.1;
     }
     .pnr-badge-tag {
-      background: var(--sp);
+      background: var(--flight-header-bg, var(--sp));
       color: #FFFFFF;
-      font-size: 10px;
+      font-size: 11px;
       font-weight: 700;
-      padding: 4px 8px;
+      padding: 5px 10px;
       border-radius: 6px;
       text-transform: uppercase;
+      letter-spacing: 0.3px;
     }
     /* Flight Cards */
     .flight-card {
@@ -498,7 +499,7 @@
       <!-- PNR Banner -->
       <div class="pnr-banner">
         <div class="pnr-left">
-          <div class="pnr-label">Mã đặt chỗ / Booking code</div>
+          <div class="pnr-label">MÃ ĐẶT CHỖ</div>
           <div class="pnr-code" id="pnr-code">SAQ68D</div>
         </div>
         <div class="pnr-badge-tag">Vé điện tử</div>
