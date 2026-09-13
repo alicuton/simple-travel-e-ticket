@@ -974,35 +974,53 @@ function openMobileQRModal() {
     state.ticketData = ticketData;
     state.mobileUrl = generateMobileTicketUrl(ticketData);
 
-    const pnr = ticketData.p || '';
-    const hist = getTicketHistory();
-    const savedRecord = hist.find(h => h.pnr === pnr);
-    const cloudUrl = (savedRecord && savedRecord.shortUrl) || (state.shortUrl && state.shortUrl.includes(pnr) ? state.shortUrl : '');
-    const isSaved = !!cloudUrl;
-    const effectiveUrl = cloudUrl || state.mobileUrl;
+    const pnr = (ticketData.p || '').trim().toUpperCase();
+    
+    // Always use clean branded short URL by default whenever PNR exists!
+    const shortUrl = pnr ? ('https://eticket.thesimple.media/' + pnr) : state.mobileUrl;
+    state.shortUrl = shortUrl;
+    const effectiveUrl = shortUrl;
 
     if (mobileUrlInput) mobileUrlInput.value = effectiveUrl;
 
     const cloudBadge = $('cloud-link-badge');
     const btnModalSaveCloud = $('btn-modal-save-cloud');
     if (cloudBadge) {
-      cloudBadge.innerHTML = isSaved 
-        ? '<span style="color:#10B981;">⚡ Link ngắn đám mây</span>' 
-        : '<span style="color:#F5A623;">⏳ Link dài (chưa lưu đám mây)</span>';
+      cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Link ngắn: ' + (pnr ? ('/' + pnr) : '') + '</span>';
     }
     if (btnModalSaveCloud) {
-      if (isSaved) {
-        btnModalSaveCloud.innerHTML = '✅ Đã lưu';
-        btnModalSaveCloud.disabled = true;
-        btnModalSaveCloud.style.opacity = '0.6';
-      } else {
-        btnModalSaveCloud.innerHTML = '💾 Lưu link ngắn';
-        btnModalSaveCloud.disabled = false;
-        btnModalSaveCloud.style.opacity = '1';
-      }
+      btnModalSaveCloud.innerHTML = '💾 Lưu booking';
+      btnModalSaveCloud.disabled = false;
+      btnModalSaveCloud.style.opacity = '1';
     }
 
-    // Populate flight summary textarea
+    // Auto-sync ticket data to Upstash cloud in background so the link is immediately live!
+    if (pnr) {
+      saveTicketToHistory();
+      fetch('/api/ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pnr: pnr, ticketData: ticketData })
+      }).then(res => res.json()).then(json => {
+        if (json.success) {
+          if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Đã kết nối đám mây (/' + pnr + ')</span>';
+          if (btnModalSaveCloud) {
+            btnModalSaveCloud.innerHTML = '✅ Đã lưu';
+            btnModalSaveCloud.style.opacity = '0.7';
+          }
+          const hist = getTicketHistory();
+          const rec = hist.find(h => h.pnr === pnr);
+          if (rec) {
+            rec.shortUrl = shortUrl;
+            localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
+          }
+        }
+      }).catch(err => {
+        console.warn('Background ticket sync:', err);
+      });
+    }
+
+    // Populate flight summary textarea with clean short URL
     const summaryTxt = formatFlightSummary(ticketData, effectiveUrl);
     if (flightSummaryTextarea) {
       flightSummaryTextarea.value = summaryTxt;

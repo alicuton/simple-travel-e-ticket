@@ -836,7 +836,7 @@ input, textarea, select { font-family: inherit; }
 .modal-body--two-col {
   display: flex;
   gap: 24px;
-  align-items: flex-start;
+  align-items: stretch;
 }
 
 /* Left: Mobile Ticket Preview Frame & Actions */
@@ -883,7 +883,7 @@ input, textarea, select { font-family: inherit; }
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .modal-section-card {
@@ -897,7 +897,7 @@ input, textarea, select { font-family: inherit; }
 .qr-section-card {
   display: flex;
   gap: 18px;
-  align-items: stretch;
+  align-items: center;
 }
 .qr-col-left {
   width: 140px;
@@ -931,7 +931,8 @@ input, textarea, select { font-family: inherit; }
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  gap: 12px;
+  justify-content: center;
 }
 .qr-title {
   font-size: 13.5px;
@@ -957,6 +958,7 @@ input, textarea, select { font-family: inherit; }
 
 /* Share & Flight Summary Section Card */
 .share-section-card {
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
@@ -975,15 +977,22 @@ input, textarea, select { font-family: inherit; }
   color: var(--brand-dark);
   font-family: monospace;
 }
+.flight-summary-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .flight-summary-textarea {
   width: 100%;
-  height: 120px;
-  padding: 8px 10px;
+  flex: 1;
+  min-height: 180px;
+  padding: 10px 12px;
   border: 1px solid var(--brand-border);
   border-radius: var(--radius-sm);
   background: #ffffff;
   font-size: 11.5px;
-  line-height: 1.45;
+  line-height: 1.5;
   color: var(--brand-dark);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   resize: none;

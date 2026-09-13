@@ -423,12 +423,7 @@
               </button>
             </div>
             <div class="qr-section-details">
-              <span class="qr-title" style="margin:0;">Mã QR xem vé trực tuyến</span>
-              <p class="qr-desc" style="margin:6px 0 10px;">
-                Quét bằng <strong>Camera</strong> hoặc <strong>Zalo</strong> để mở vé ngay trên điện thoại (không cần cài app).
-              </p>
-
-              <!-- Option: Show QR on A4 Ticket (integrated into QR box) -->
+              <!-- Option: Show QR on A4 Ticket (Moved to TOP as requested) -->
               <div class="a4-qr-toggle-inline">
                 <label class="toggle-switch">
                   <input type="checkbox" id="a4-qr-toggle" checked>
@@ -439,13 +434,20 @@
                   <div style="font-size:11px;color:var(--brand-muted);">Tự động chèn mã QR vào phần đầu vé in / xuất PDF</div>
                 </div>
               </div>
+
+              <div>
+                <span class="qr-title" style="margin:0;">Mã QR xem vé trực tuyến</span>
+                <p class="qr-desc" style="margin:4px 0 0;">
+                  Quét bằng <strong>Camera</strong> hoặc <strong>Zalo</strong> để mở vé ngay trên điện thoại (không cần cài app).
+                </p>
+              </div>
             </div>
           </div>
 
           <!-- Row 2: Online Ticket Link & Flight Summary -->
           <div class="modal-section-card share-section-card">
             <!-- Line 1: Ticket Link -->
-            <div style="margin-bottom:12px;">
+            <div style="margin-bottom:10px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                 <label class="ctrl-label" style="font-size:12px;font-weight:700;color:var(--brand-dark);margin:0;">Đường dẫn vé trực tuyến</label>
                 <span id="cloud-link-badge" style="font-size:11px;font-weight:600;"></span>
@@ -453,19 +455,19 @@
               <div class="share-link-row">
                 <input type="text" id="mobile-url-input" readonly class="share-link-input" spellcheck="false">
                 <button class="btn btn--outline btn--sm" id="btn-copy-mobile-url" title="Sao chép link vé trực tuyến" style="white-space:nowrap;">📋 Copy</button>
-                <button class="btn btn--primary btn--sm" id="btn-modal-save-cloud" title="Lưu booking lên đám mây để tạo link ngắn" style="white-space:nowrap;">💾 Lưu link ngắn</button>
+                <button class="btn btn--primary btn--sm" id="btn-modal-save-cloud" title="Lưu booking lên đám mây" style="white-space:nowrap;">💾 Lưu link ngắn</button>
               </div>
             </div>
 
-            <!-- Line 2: Flight Summary Textarea with Copy Button -->
-            <div>
+            <!-- Line 2: Flight Summary Textarea with Copy Button (Expands downward) -->
+            <div class="flight-summary-box">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
                 <label class="ctrl-label" style="font-size:12px;font-weight:700;color:var(--brand-dark);margin:0;">Tóm tắt hành trình bay (Gửi Zalo/SMS)</label>
                 <button class="btn btn--outline btn--sm" id="btn-copy-flight-summary" style="padding:3px 8px;font-size:11px;white-space:nowrap;">
                   📋 Copy tóm tắt
                 </button>
               </div>
-              <textarea id="flight-summary-textarea" readonly class="flight-summary-textarea" rows="4" spellcheck="false"></textarea>
+              <textarea id="flight-summary-textarea" readonly class="flight-summary-textarea" spellcheck="false"></textarea>
             </div>
           </div>
         </div>
@@ -542,6 +544,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=4.5"></script>
+  <script src="js/app.js?v=4.6"></script>
 </body>
 </html>
