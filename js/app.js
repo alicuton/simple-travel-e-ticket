@@ -977,6 +977,7 @@ function openMobileQRModal() {
     const pnr = ticketData.p || '';
     const hist = getTicketHistory();
     const savedRecord = hist.find(h => h.pnr === pnr);
+    const cloudUrl = (savedRecord && savedRecord.shortUrl) || (state.shortUrl && state.shortUrl.includes(pnr) ? state.shortUrl : '');
     const isSaved = !!cloudUrl;
     const effectiveUrl = cloudUrl || state.mobileUrl;
 
