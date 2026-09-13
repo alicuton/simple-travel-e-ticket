@@ -81,7 +81,7 @@ const state = {
   rawHTML: null,
   themeColor: BRAND_DEFAULT,
   useGradient: false,
-  fontScale: 90,
+  fontScale: 100,
   fontFamily: 'Inter',
   editMode: false,
   fileName: '',
@@ -1188,8 +1188,8 @@ function updatePreview() {
     html = html.replace('</head>', fontLink + fontStyle + '\n</head>');
   }
 
-  // Font scale
-  const scaleCSS = `<style id="__scale__">body{font-size:${state.fontScale}%!important;}</style>`;
+  // Font scale (default 100% = 14px)
+  const scaleCSS = `<style id="__scale__">body{font-size:${(14 * state.fontScale / 100).toFixed(2)}px!important;}</style>`;
   html = html.replace('</head>', scaleCSS + '\n</head>');
 
   const doc = previewIframe.contentDocument || previewIframe.contentWindow.document;
@@ -1846,7 +1846,7 @@ function setFontScale(val) {
   const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
   let s = iDoc.getElementById('__scale__');
   if (!s) { s = iDoc.createElement('style'); s.id = '__scale__'; iDoc.head.appendChild(s); }
-  s.textContent = `body{font-size:${state.fontScale}%!important;}`;
+  s.textContent = `body{font-size:${(14 * state.fontScale / 100).toFixed(2)}px!important;}`;
   setTimeout(resizeIframe, 50);
 }
 
@@ -1994,7 +1994,7 @@ document.querySelectorAll('.edit-toolbar__btn[data-cmd]').forEach(btn => {
 fontSlider.addEventListener('input', e => setFontScale(+e.target.value));
 btnFontDec.addEventListener('click', () => setFontScale(state.fontScale - 5));
 fontInc.addEventListener('click', () => setFontScale(state.fontScale + 5));
-btnFontReset.addEventListener('click', () => setFontScale(90));
+btnFontReset.addEventListener('click', () => setFontScale(100));
 
 // ─── LƯU Ý Rich Toolbar ─────────────────────────────────────
 document.querySelectorAll('.luu-y-tb-btn[data-cmd]').forEach(btn => {
@@ -2307,7 +2307,7 @@ function loadTicketFromHistory(pnr) {
 
   state.themeColor = item.themeColor || BRAND_DEFAULT;
   state.fontFamily = item.fontFamily || 'Inter';
-  state.fontScale = item.fontScale || 90;
+  state.fontScale = item.fontScale || 100;
   state.useGradient = item.useGradient !== undefined ? item.useGradient : false;
 
   // Sync inputs
