@@ -2820,6 +2820,9 @@ function initAuth() {
         document.documentElement.classList.remove('auth-locked');
         if (authOverlay) authOverlay.style.display = 'none';
         if (authPassword) authPassword.value = '';
+        if (window.innerWidth <= 768) {
+          renderHistoryList();
+        }
         showToast('👋 Đăng nhập thành công! Chào mừng bạn.', 'success');
       } else {
         if (authError) {
@@ -2928,3 +2931,11 @@ initAuth();
 buildPresets();
 renderLuuYTemplates();
 initCollapsiblePanels();
+
+// On mobile devices, automatically render booking history list as the primary hub
+if (window.innerWidth <= 768) {
+  const isAuth = localStorage.getItem(LS_KEY_AUTH_SESSION) === 'true' || sessionStorage.getItem(LS_KEY_AUTH_SESSION) === 'true';
+  if (isAuth) {
+    renderHistoryList();
+  }
+}

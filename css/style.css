@@ -1082,11 +1082,187 @@ input, textarea, select { font-family: inherit; }
   align-items: center;
 }
 
+#modal-history {
+  display: none;
+}
+
+/* ============================================================
+   MOBILE-ONLY DEDICATED VIEW (BOOKING MANAGER ONLY)
+   On screens <= 768px:
+   - Hide desktop generator layout (sidebar upload, editor, preview toolbar)
+   - Present Quản lý Booking directly as the main full-screen app view
+   - Transform table rows into modern touch-friendly cards
+   ============================================================ */
+@media (max-width: 768px) {
+  /* 1. Header optimization on mobile */
+  .header {
+    padding: 10px 14px;
+    height: auto;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .header__brand .header__subtitle,
+  .header .badge,
+  #btn-header-change-pwd {
+    display: none !important;
+  }
+  .header__brand .header__title {
+    font-size: 15px;
+  }
+  #btn-header-history {
+    background: var(--brand-primary) !important;
+    color: #0f172a !important;
+    border-color: var(--brand-primary) !important;
+    font-weight: 700 !important;
+  }
+
+  /* 2. Hide Desktop-only Generator Layout */
+  .app-layout,
+  .edit-toolbar,
+  #preview-container,
+  #preview-toolbar {
+    display: none !important;
+  }
+
+  /* 3. Make Booking History Modal the default full-screen mobile app view */
+  #modal-history {
+    display: flex !important;
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    z-index: 10 !important;
+    min-height: calc(100vh - 65px);
+  }
+  #modal-history .modal-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #F8FAFC !important;
+    min-height: calc(100vh - 65px);
+  }
+  #modal-history .modal-header {
+    padding: 14px 16px;
+    background: #FFFFFF;
+    border-bottom: 1px solid var(--brand-border);
+  }
+  #modal-history .modal-close {
+    display: none !important; /* Always stays in booking manager on mobile */
+  }
+  #modal-history .modal-body {
+    padding: 12px 12px 24px !important;
+  }
+
+  /* 4. Transform table to clean, modern touch-friendly cards */
+  #history-table-container {
+    background: transparent !important;
+    border: none !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+  .history-table, 
+  .history-table thead, 
+  .history-table tbody, 
+  .history-table tr, 
+  .history-table td {
+    display: block;
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+  .history-table thead {
+    display: none; /* Hide desktop table headers */
+  }
+  .history-table tr {
+    background: #FFFFFF;
+    border: 1px solid var(--brand-border);
+    border-radius: 12px;
+    padding: 14px 14px 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .history-table tr:hover {
+    background: #FFFFFF;
+  }
+  .history-table td {
+    padding: 4px 0 !important;
+    border: none !important;
+  }
+
+  /* Card rows */
+  .history-table tr td:nth-child(1) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .history-table tr td:nth-child(2) {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--brand-dark);
+  }
+  .history-table tr td:nth-child(3) {
+    font-size: 12.5px !important;
+    color: #D97706 !important;
+    font-weight: 700 !important;
+    margin-bottom: 4px;
+  }
+  .history-table tr td:nth-child(4) {
+    font-size: 12px !important;
+    color: #334155 !important;
+    line-height: 1.4 !important;
+    padding: 6px 0 !important;
+    border-top: 1px dashed #E2E8F0 !important;
+    border-bottom: 1px dashed #E2E8F0 !important;
+    margin: 6px 0 !important;
+  }
+  .history-table tr td:nth-child(5) {
+    font-size: 11.5px !important;
+    color: #64748B !important;
+    margin-bottom: 10px;
+  }
+  .history-table tr td:nth-child(6) {
+    margin-top: 8px;
+    padding-top: 8px !important;
+    border-top: 1px solid #F1F5F9 !important;
+  }
+  .history-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .history-actions .btn {
+    flex: 1;
+    padding: 8px 6px !important;
+    font-size: 12px !important;
+    font-weight: 600;
+    justify-content: center;
+    border-radius: 8px;
+  }
+  /* On mobile: Hide "Mở vào soạn thảo vé", make QR & Copy buttons full width */
+  .history-actions button[data-action="load"] {
+    display: none !important;
+  }
+
+  /* 5. Mobile QR Modal full-screen popup */
+  #modal-mobile-qr .modal-card {
+    width: 96% !important;
+    max-height: 92vh !important;
+  }
+  #modal-mobile-qr .mobile-preview-col {
+    display: none !important; /* Hide mockup iframe on phone to focus on quick copy & QR */
+  }
+  #modal-mobile-qr .modal-actions-col {
+    width: 100% !important;
+  }
+}
+
 /* ============================================================
    AUTH LOGIN OVERLAY & GATEKEEPER
    ============================================================ */
 html.auth-locked .header,
-html.auth-locked .app-layout {
+html.auth-locked .app-layout,
+html.auth-locked #modal-history {
   display: none !important;
 }
 
