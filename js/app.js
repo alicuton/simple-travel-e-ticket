@@ -1004,16 +1004,7 @@ function copyMobileUrl() {
   });
 }
 
-function downloadStandaloneQR() {
-  const pnr = state.ticketData?.p || 'SimpleTravel';
-  const url = state.mobileUrl;
-  if (!url) {
-    showToast('Chưa có dữ liệu để tạo mã QR', 'error');
-    return;
-  }
-
-  showToast('⏳ Đang tạo ảnh mã QR Full HD...', '');
-
+function generateStylizedQRCanvas(pnr, url, themeColor = BRAND_DEFAULT) {
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = 1080;
   exportCanvas.height = 1260;
@@ -1023,61 +1014,76 @@ function downloadStandaloneQR() {
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, 1080, 1260);
 
-  const renderContents = () => {
-    // 1. Draw Stylized Leaf QR Code in center
-    drawStylizedLeafQR(exportCanvas, url, { x: 200, y: 230, size: 680 });
+  return new Promise((resolve) => {
+    const renderContents = () => {
+      // 1. Draw Stylized Leaf QR Code in center
+      drawStylizedLeafQR(exportCanvas, url, { x: 200, y: 230, size: 680 });
 
-    // 2. PNR Text below QR (bold 52px, centered)
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1010);
+      // 2. PNR Text below QR (bold 52px, centered)
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Mã đặt chỗ: ' + pnr, 540, 1010);
 
-    // 3. Footer: Orange background, large text matching PNR size (48px)
-    const footerColor = state.themeColor || BRAND_DEFAULT;
-    ctx.fillStyle = footerColor;
-    ctx.fillRect(0, 1120, 1080, 140);
+      // 3. Footer: Orange background, large text matching PNR size (48px)
+      const footerColor = themeColor || BRAND_DEFAULT;
+      ctx.fillStyle = footerColor;
+      ctx.fillRect(0, 1120, 1080, 140);
 
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Hotline: 0768.188.224', 540, 1206);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = 'bold 48px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Hotline: 0768.188.224', 540, 1206);
 
+      resolve(exportCanvas);
+    };
+
+    // Draw Top Header: Logo on the left + "VÉ ĐIỆN TỬ" text on the right
+    const logoImg = new Image();
+    logoImg.onload = () => {
+      ctx.drawImage(logoImg, 100, 24, 230, 153);
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
+      renderContents();
+    };
+    logoImg.onerror = () => {
+      ctx.fillStyle = themeColor || BRAND_DEFAULT;
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('SIMPLE TRAVEL', 100, 118);
+
+      ctx.fillStyle = '#0F172A';
+      ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
+      renderContents();
+    };
+    logoImg.src = SIMPLE_TRAVEL_LOGO_BASE64;
+  });
+}
+
+async function downloadStandaloneQR() {
+  const pnr = state.ticketData?.p || 'SimpleTravel';
+  const url = state.mobileUrl;
+  if (!url) {
+    showToast('Chưa có dữ liệu để tạo mã QR', 'error');
+    return;
+  }
+
+  showToast('⏳ Đang tạo ảnh mã QR Full HD...', '');
+  try {
+    const exportCanvas = await generateStylizedQRCanvas(pnr, url, state.themeColor);
     const link = document.createElement('a');
     link.download = 'QR_VeMayBay_' + pnr + '.png';
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
     showToast('✅ Đã tải file ảnh mã QR Full HD!', 'success');
-  };
-
-  // Draw Top Header: Logo on the left + "VÉ ĐIỆN TỬ" text on the right (No horizontal divider line)
-  const logoImg = new Image();
-  logoImg.onload = () => {
-    // Draw Logo on left side: enlarged width 230, height 153
-    ctx.drawImage(logoImg, 100, 24, 230, 153);
-
-    // Draw "VÉ ĐIỆN TỬ" text on right side: no border/label, pure black, 52px bold
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
-
-    renderContents();
-  };
-  logoImg.onerror = () => {
-    ctx.fillStyle = state.themeColor || BRAND_DEFAULT;
-    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('SIMPLE TRAVEL', 100, 118);
-
-    ctx.fillStyle = '#0F172A';
-    ctx.font = 'bold 52px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('VÉ ĐIỆN TỬ', 980, 118);
-
-    renderContents();
-  };
-  logoImg.src = SIMPLE_TRAVEL_LOGO_BASE64;
+  } catch (e) {
+    console.error(e);
+    showToast('❌ Lỗi tải mã QR', 'error');
+  }
 }
 
 async function captureMobileCard(scale = 2.5) {
@@ -2233,7 +2239,7 @@ function renderHistoryList(query = '') {
           '<div class="history-actions" style="justify-content: center;">' +
             '<button class="btn btn--primary btn--sm" data-action="load" data-pnr="' + item.pnr + '" title="Mở lại vé vào trình chỉnh sửa" style="padding: 4px 8px; font-size: 11px;">👁️ Mở</button>' +
             '<button class="btn btn--outline btn--sm" data-action="copy" data-pnr="' + item.pnr + '" title="Copy tóm tắt chuyến bay gửi Zalo" style="padding: 4px 8px; font-size: 11px;">📋</button>' +
-            '<button class="btn btn--outline btn--sm" data-action="copy-qr" data-pnr="' + item.pnr + '" title="Copy ảnh Mã QR vào clipboard" style="padding: 4px 8px; font-size: 11px;">🔲</button>' +
+            '<button class="btn btn--outline btn--sm" data-action="download-qr" data-pnr="' + item.pnr + '" title="Tải ảnh thẻ mã QR (Full HD)" style="padding: 4px 8px; font-size: 11px;">🔲</button>' +
             (item.mobileUrl ? '<a href="' + item.mobileUrl + '" target="_blank" class="btn btn--outline btn--sm" title="Mở vé Mobile" style="padding: 4px 8px; font-size: 11px; text-decoration: none;">📱</a>' : '') +
             '<button class="btn btn--outline btn--sm" data-action="delete" data-pnr="' + item.pnr + '" title="Xóa vé này khỏi lịch sử" style="padding: 4px 8px; font-size: 11px; color: #ef4444; border-color: #fca5a5;">🗑️</button>' +
           '</div>' +
@@ -2253,8 +2259,8 @@ function renderHistoryList(query = '') {
         loadTicketFromHistory(pnr);
       } else if (action === 'copy') {
         copyFlightSummaryByPnr(pnr);
-      } else if (action === 'copy-qr') {
-        copyQRByPnr(pnr);
+      } else if (action === 'download-qr' || action === 'copy-qr') {
+        downloadQRByPnr(pnr);
       } else if (action === 'delete') {
         deleteHistoryItem(pnr);
       }
@@ -2262,7 +2268,7 @@ function renderHistoryList(query = '') {
   });
 }
 
-async function copyQRByPnr(pnr) {
+async function downloadQRByPnr(pnr) {
   const history = getTicketHistory();
   const item = history.find(h => h.pnr === pnr);
   if (!item) return;
@@ -2273,26 +2279,27 @@ async function copyQRByPnr(pnr) {
     return;
   }
 
+  showToast('⏳ Đang tạo ảnh thẻ mã QR Full HD...', '');
   try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 400;
-    canvas.height = 400;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, 400, 400);
-    drawStylizedLeafQR(canvas, url, { size: 400 });
+    const canvas = await generateStylizedQRCanvas(item.pnr, url, item.themeColor);
 
+    // 1. Trigger PNG download
+    const link = document.createElement('a');
+    link.download = 'QR_VeMayBay_' + item.pnr + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    // 2. Also copy image to clipboard
     canvas.toBlob(async blob => {
       try {
         await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-        showToast('🔲 Đã copy mã QR vé [' + pnr + '] vào clipboard!', 'success');
-      } catch (err) {
-        showToast('Trình duyệt không hỗ trợ copy ảnh trực tiếp', 'error');
-      }
+      } catch (err) {}
     });
+
+    showToast('✅ Đã tải ảnh thẻ mã QR [' + item.pnr + ']!', 'success');
   } catch (err) {
     console.error(err);
-    showToast('❌ Lỗi copy mã QR: ' + err.message, 'error');
+    showToast('❌ Lỗi tải mã QR: ' + err.message, 'error');
   }
 }
 
