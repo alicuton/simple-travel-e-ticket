@@ -930,7 +930,7 @@ function syncA4QRBadge(root) {
 }
 
 // ─── Modal Mobile & QR Logic ────────────────────────────────
-function formatFlightSummary(data) {
+function formatFlightSummary(data, customLink = '') {
   if (!data) return '';
   let txt = '✈️ VÉ ĐIỆN TỬ - SIMPLE TRAVEL\n';
   txt += 'Mã đặt chỗ: ' + (data.p || '') + '\n';
@@ -959,46 +959,59 @@ function formatFlightSummary(data) {
 }
 
 function openMobileQRModal() {
-  const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-  if (!iDoc || !iDoc.body) {
-    showToast('Chưa có dữ liệu vé!', 'error');
-    return;
+  try {
+    const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+    if (!iDoc || !iDoc.body) {
+      showToast('Chưa có dữ liệu vé!', 'error');
+      return;
+    }
+
+    const ticketData = extractTicketData(iDoc);
+    if (!ticketData) {
+      showToast('Chưa trích xuất được dữ liệu vé!', 'error');
+      return;
+    }
+    state.ticketData = ticketData;
+    state.mobileUrl = generateMobileTicketUrl(ticketData);
+
+    const pnr = ticketData.p || '';
+    const hist = getTicketHistory();
+    const savedRecord = hist.find(h => h.pnr === pnr);
+    const cloudUrl = (savedRecord && savedRecord.shortUrl) || (state.shortUrl && state.shortUrl.includes(pnr) ? state.shortUrl : '');
+    const effectiveUrl = cloudUrl || state.mobileUrl;
+
+    if (mobileUrlInput) mobileUrlInput.value = effectiveUrl;
+
+    // Populate flight summary textarea
+    const summaryTxt = formatFlightSummary(ticketData, effectiveUrl);
+    if (flightSummaryTextarea) {
+      flightSummaryTextarea.value = summaryTxt;
+    }
+
+    if (qrCodeContainer) {
+      qrCodeContainer.innerHTML = '';
+      const modalCanvas = document.createElement('canvas');
+      modalCanvas.width = 140;
+      modalCanvas.height = 140;
+      modalCanvas.style.display = 'block';
+      modalCanvas.style.margin = '0 auto';
+      const modalCtx = modalCanvas.getContext('2d');
+      modalCtx.fillStyle = '#FFFFFF';
+      modalCtx.fillRect(0, 0, 140, 140);
+      drawStylizedLeafQR(modalCanvas, effectiveUrl, { size: 140 });
+      qrCodeContainer.appendChild(modalCanvas);
+    }
+
+    if (mobilePreviewIframe) {
+      const comp = LZString.compressToEncodedURIComponent(JSON.stringify(ticketData));
+      mobilePreviewIframe.src = 'm.html?preview=1#' + comp;
+    }
+
+    if (modalMobileQR) modalMobileQR.style.display = 'flex';
+  } catch (err) {
+    console.error('Error opening Mobile QR Modal:', err);
+    showToast('❌ Lỗi mở popup: ' + err.message, 'error');
   }
-
-  const ticketData = extractTicketData(iDoc);
-  state.ticketData = ticketData;
-  state.mobileUrl = generateMobileTicketUrl(ticketData);
-
-  const pnr = ticketData.p || '';
-  const hist = getTicketHistory();
-  const savedRecord = hist.find(h => h.pnr === pnr);
-  const cloudUrl = (savedRecord && savedRecord.shortUrl) || (state.shortUrl && state.shortUrl.includes(pnr) ? state.shortUrl : '');
-  const effectiveUrl = cloudUrl || state.mobileUrl;
-
-  mobileUrlInput.value = effectiveUrl;
-
-  // Populate flight summary textarea
-  const summaryTxt = formatFlightSummary(ticketData, effectiveUrl);
-  if (flightSummaryTextarea) {
-    flightSummaryTextarea.value = summaryTxt;
-  }
-
-  qrCodeContainer.innerHTML = '';
-  const modalCanvas = document.createElement('canvas');
-  modalCanvas.width = 140;
-  modalCanvas.height = 140;
-  modalCanvas.style.display = 'block';
-  modalCanvas.style.margin = '0 auto';
-  const modalCtx = modalCanvas.getContext('2d');
-  modalCtx.fillStyle = '#FFFFFF';
-  modalCtx.fillRect(0, 0, 140, 140);
-  drawStylizedLeafQR(modalCanvas, effectiveUrl, { size: 140 });
-  qrCodeContainer.appendChild(modalCanvas);
-
-  const comp = LZString.compressToEncodedURIComponent(JSON.stringify(ticketData));
-  mobilePreviewIframe.src = 'm.html?preview=1#' + comp;
-
-  modalMobileQR.style.display = 'flex';
 }
 
 function closeMobileQRModal() {
