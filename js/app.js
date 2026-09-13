@@ -154,9 +154,6 @@ const btnCopyMobileUrl      = $('btn-copy-mobile-url');
 const btnDownloadMobileImg  = $('btn-download-mobile-img');
 const btnCopyMobileImg      = $('btn-copy-mobile-img');
 const btnCopyFlightSummary  = $('btn-copy-flight-summary');
-const shortUrlInput         = $('short-url-input');
-const btnGenerateShortUrl   = $('btn-generate-short-url');
-const shortLinkStatus       = $('short-link-status');
 const a4QRToggle            = $('a4-qr-toggle');
 
 // History Modal DOM
@@ -937,15 +934,7 @@ function openMobileQRModal() {
   const ticketData = extractTicketData(iDoc);
   state.ticketData = ticketData;
   state.mobileUrl = generateMobileTicketUrl(ticketData);
-  state.shortUrl = '';
   mobileUrlInput.value = state.mobileUrl;
-
-  if (shortUrlInput) shortUrlInput.value = '';
-  if (btnGenerateShortUrl) {
-    btnGenerateShortUrl.disabled = false;
-    btnGenerateShortUrl.textContent = '⚡ Tạo link ngắn';
-  }
-  if (shortLinkStatus) shortLinkStatus.textContent = '';
 
   qrCodeContainer.innerHTML = '';
   const modalCanvas = document.createElement('canvas');
@@ -978,104 +967,6 @@ function copyMobileUrl() {
     document.execCommand('copy');
     showToast('📋 Đã sao chép link vé trực tuyến!', 'success');
   });
-}
-
-async function generateShortUrl() {
-  const fullUrl = state.mobileUrl;
-  if (!fullUrl) return;
-
-  if (state.shortUrl && shortUrlInput && shortUrlInput.value === state.shortUrl) {
-    navigator.clipboard.writeText(state.shortUrl).then(() => {
-      showToast('📋 Đã copy link rút gọn: ' + state.shortUrl, 'success');
-    });
-    return;
-  }
-
-  if (btnGenerateShortUrl) {
-    btnGenerateShortUrl.disabled = true;
-    btnGenerateShortUrl.textContent = '⏳ Đang tạo...';
-  }
-  if (shortLinkStatus) shortLinkStatus.textContent = 'Đang xử lý...';
-
-  // Helper with timeout
-  const fetchWithTimeout = (url, opts = {}, ms = 4000) => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), ms);
-    return fetch(url, { ...opts, credentials: 'omit', signal: controller.signal }).finally(() => clearTimeout(timer));
-  };
-
-  // Provider 1: clck.ru (native Access-Control-Allow-Origin: *)
-  try {
-    const clckRes = await fetchWithTimeout('https://clck.ru/--?url=' + encodeURIComponent(fullUrl), {}, 4000);
-    if (clckRes.ok) {
-      const shortUrl = (await clckRes.text()).trim();
-      if (shortUrl.startsWith('http')) {
-        state.shortUrl = shortUrl;
-        if (shortUrlInput) shortUrlInput.value = shortUrl;
-        if (btnGenerateShortUrl) {
-          btnGenerateShortUrl.textContent = '📋 Copy link';
-          btnGenerateShortUrl.disabled = false;
-        }
-        if (shortLinkStatus) shortLinkStatus.textContent = '✓ Thành công';
-        navigator.clipboard.writeText(shortUrl);
-        showToast('⚡ Đã tạo & copy link rút gọn thành công!', 'success');
-        return;
-      }
-    }
-  } catch (err) {
-    console.warn('clck.ru error:', err);
-  }
-
-  // Provider 2: is.gd direct
-  try {
-    const isGdRes = await fetchWithTimeout('https://is.gd/create.php?format=json&url=' + encodeURIComponent(fullUrl), {}, 3500);
-    if (isGdRes.ok) {
-      const data = await isGdRes.json();
-      if (data.shorturl) {
-        state.shortUrl = data.shorturl;
-        if (shortUrlInput) shortUrlInput.value = data.shorturl;
-        if (btnGenerateShortUrl) {
-          btnGenerateShortUrl.textContent = '📋 Copy link';
-          btnGenerateShortUrl.disabled = false;
-        }
-        if (shortLinkStatus) shortLinkStatus.textContent = '✓ Thành công';
-        navigator.clipboard.writeText(data.shorturl);
-        showToast('⚡ Đã tạo & copy link rút gọn thành công!', 'success');
-        return;
-      }
-    }
-  } catch (err) {
-    console.warn('is.gd error:', err);
-  }
-
-  // Provider 3: TinyURL via allorigins proxy
-  try {
-    const res = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl)), {}, 4000);
-    if (res.ok) {
-      const shortUrl = (await res.text()).trim();
-      if (shortUrl.startsWith('http')) {
-        state.shortUrl = shortUrl;
-        if (shortUrlInput) shortUrlInput.value = shortUrl;
-        if (btnGenerateShortUrl) {
-          btnGenerateShortUrl.textContent = '📋 Copy link';
-          btnGenerateShortUrl.disabled = false;
-        }
-        if (shortLinkStatus) shortLinkStatus.textContent = '✓ Thành công';
-        navigator.clipboard.writeText(shortUrl);
-        showToast('⚡ Đã tạo & copy link rút gọn thành công!', 'success');
-        return;
-      }
-    }
-  } catch (err) {
-    console.warn('TinyURL proxy error:', err);
-  }
-
-  if (btnGenerateShortUrl) {
-    btnGenerateShortUrl.disabled = false;
-    btnGenerateShortUrl.textContent = '⚡ Thử lại';
-  }
-  if (shortLinkStatus) shortLinkStatus.textContent = 'Lỗi kết nối';
-  showToast('⚠️ Không thể kết nối dịch vụ rút gọn link, vui lòng dùng link gốc', 'error');
 }
 
 function downloadStandaloneQR() {
@@ -2163,9 +2054,6 @@ if (modalMobileQR) {
 }
 if (btnCopyMobileUrl) {
   btnCopyMobileUrl.addEventListener('click', copyMobileUrl);
-}
-if (btnGenerateShortUrl) {
-  btnGenerateShortUrl.addEventListener('click', generateShortUrl);
 }
 if (btnDownloadQR) {
   btnDownloadQR.addEventListener('click', downloadStandaloneQR);
