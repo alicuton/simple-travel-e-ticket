@@ -3,13 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Simple Travel — E-Ticket Generator v3.0</title>
+  <title>Simple Travel — E-Ticket Generator</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3.6">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=4.1">
+  <script>
+    // Early session check to prevent FOUC (flash of unauthenticated content)
+    (function() {
+      var isAuth = localStorage.getItem('st_auth_session') === 'true' || sessionStorage.getItem('st_auth_session') === 'true';
+      if (!isAuth) {
+        document.documentElement.classList.add('auth-locked');
+      }
+    })();
+  </script>
 </head>
 <body>
+
+  <!-- ===== AUTH LOGIN OVERLAY ===== -->
+  <div id="auth-overlay" class="auth-overlay">
+    <div class="auth-card" id="auth-card">
+      <div class="auth-logo-badge">✈️</div>
+      <h2 class="auth-title">Simple Travel E-Ticket</h2>
+      <p class="auth-subtitle">Cổng quản trị &amp; tạo vé điện tử nội bộ</p>
+      
+      <form id="auth-form" class="auth-form" onsubmit="return false;">
+        <div class="auth-field">
+          <label for="auth-password" class="auth-label">Mật khẩu truy cập</label>
+          <div class="auth-input-wrap">
+            <span class="auth-input-icon">🔒</span>
+            <input type="password" id="auth-password" class="auth-input" placeholder="Nhập mật khẩu nội bộ..." autocomplete="current-password">
+            <button type="button" id="btn-toggle-pwd" class="btn-toggle-pwd" title="Hiện/ẩn mật khẩu">👁️</button>
+          </div>
+          <div id="auth-error" class="auth-error" style="display:none;"></div>
+        </div>
+
+        <div class="auth-remember-row">
+          <label class="auth-remember-label">
+            <input type="checkbox" id="auth-remember" checked>
+            <span>Ghi nhớ trên thiết bị này</span>
+          </label>
+        </div>
+
+        <button type="submit" id="btn-auth-login" class="btn btn--primary auth-btn-submit">
+          <span>Đăng nhập</span> ➔
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- ===== HEADER ===== -->
   <header class="header">
@@ -20,9 +61,15 @@
         <p class="header__subtitle">Simple Travel</p>
       </div>
     </div>
-    <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
       <button class="btn btn--outline btn--sm" id="btn-header-history" style="color:var(--brand-dark);border-color:var(--brand-border);background:var(--brand-surface);font-size:12px;padding:5px 12px;font-weight:600;" title="Xem các vé đã lưu & mở lại nhanh">
         📂 Quản lý Booking
+      </button>
+      <button class="btn btn--outline btn--sm" id="btn-header-change-pwd" style="color:var(--brand-muted);font-size:12px;padding:5px 10px;" title="Đổi mật khẩu truy cập">
+        🔑 Đổi mật khẩu
+      </button>
+      <button class="btn btn--outline btn--sm" id="btn-header-logout" style="color:#ef4444;border-color:#fca5a5;font-size:12px;padding:5px 10px;" title="Đăng xuất khỏi thiết bị này">
+        🚪 Đăng xuất
       </button>
       <span class="badge">v4.0</span>
     </div>
@@ -451,9 +498,46 @@
     </div>
   </div>
 
+  <!-- ===== MODAL: CHANGE PASSWORD ===== -->
+  <div class="modal-backdrop" id="modal-change-pwd" style="display:none;">
+    <div class="modal-card" style="max-width: 420px; width: 92%;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span style="font-size: 22px;">🔑</span>
+          <div>
+            <h3>Đổi mật khẩu truy cập</h3>
+            <p>Cập nhật mật khẩu bảo vệ công cụ tạo vé</p>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-change-pwd-close" title="Đóng">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px;">
+        <form id="form-change-pwd" style="width: 100%;" onsubmit="return false;">
+          <div style="margin-bottom: 14px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--brand-dark);margin-bottom:6px;">Mật khẩu hiện tại</label>
+            <input type="password" id="pwd-current" class="share-link-input" placeholder="Nhập mật khẩu đang dùng..." style="width:100%;background:#F8FAFC;">
+          </div>
+          <div style="margin-bottom: 14px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--brand-dark);margin-bottom:6px;">Mật khẩu mới</label>
+            <input type="password" id="pwd-new" class="share-link-input" placeholder="Tối thiểu 6 ký tự..." style="width:100%;background:#F8FAFC;">
+          </div>
+          <div style="margin-bottom: 16px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:var(--brand-dark);margin-bottom:6px;">Xác nhận mật khẩu mới</label>
+            <input type="password" id="pwd-confirm" class="share-link-input" placeholder="Nhập lại mật khẩu mới..." style="width:100%;background:#F8FAFC;">
+          </div>
+          <div id="change-pwd-error" style="color:#EF4444;font-size:12px;margin-bottom:12px;display:none;padding:6px 10px;background:#FEF2F2;border-radius:6px;"></div>
+          <div style="display:flex;justify-content:flex-end;gap:10px;">
+            <button type="button" class="btn btn--outline btn--sm" id="btn-change-pwd-cancel">Hủy</button>
+            <button type="submit" class="btn btn--primary btn--sm" id="btn-change-pwd-save">Lưu mật khẩu mới</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=4.0"></script>
+  <script src="js/app.js?v=4.2"></script>
 </body>
 </html>

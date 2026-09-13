@@ -1073,3 +1073,207 @@ input, textarea, select { font-family: inherit; }
   align-items: center;
 }
 
+/* ============================================================
+   AUTH LOGIN OVERLAY & GATEKEEPER
+   ============================================================ */
+html.auth-locked .header,
+html.auth-locked .app-layout {
+  display: none !important;
+}
+
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #0B0F19;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(245, 166, 35, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(30, 41, 59, 0.8) 0px, transparent 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 1;
+  transition: opacity 0.3s ease, visibility 0.3s;
+}
+
+html:not(.auth-locked) .auth-overlay {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  background: #1E293B;
+  border: 1px solid #334155;
+  border-radius: 20px;
+  padding: 36px 28px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  text-align: center;
+  animation: auth-slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes auth-slide-up {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.auth-logo-badge {
+  width: 54px;
+  height: 54px;
+  background: linear-gradient(135deg, #F5A623 0%, #D4891A 100%);
+  color: #FFFFFF;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 16px rgba(245, 166, 35, 0.3);
+}
+
+.auth-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #F8FAFC;
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+
+.auth-subtitle {
+  font-size: 13px;
+  color: #94A3B8;
+  margin-bottom: 24px;
+}
+
+.auth-form {
+  text-align: left;
+}
+
+.auth-field {
+  margin-bottom: 16px;
+}
+
+.auth-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #CBD5E1;
+  margin-bottom: 8px;
+}
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-icon {
+  position: absolute;
+  left: 14px;
+  font-size: 16px;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.auth-input {
+  width: 100%;
+  background: #0F172A;
+  border: 1.5px solid #334155;
+  border-radius: 10px;
+  padding: 12px 42px 12px 40px;
+  color: #F8FAFC;
+  font-size: 14px;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.auth-input:focus {
+  border-color: #F5A623;
+  box-shadow: 0 0 0 3px rgba(245, 166, 35, 0.2);
+}
+
+.btn-toggle-pwd {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: #94A3B8;
+  cursor: pointer;
+  padding: 4px;
+  font-size: 15px;
+}
+
+.btn-toggle-pwd:hover {
+  color: #F8FAFC;
+}
+
+.auth-error {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #F87171;
+  background: rgba(239, 68, 68, 0.1);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.auth-remember-row {
+  margin-bottom: 20px;
+}
+
+.auth-remember-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #94A3B8;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-remember-label input[type="checkbox"] {
+  accent-color: #F5A623;
+  width: 16px;
+  height: 16px;
+}
+
+.auth-btn-submit {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #F5A623;
+  color: #0F172A;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.auth-btn-submit:hover {
+  background: #E0951C;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(245, 166, 35, 0.35);
+}
+
+.auth-btn-submit:active {
+  transform: translateY(0);
+}
+
+.auth-shake {
+  animation: auth-shake 0.4s ease-in-out;
+}
+
+@keyframes auth-shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+

@@ -2491,7 +2491,189 @@ function initCollapsiblePanels() {
   });
 }
 
+// ─── Authentication & Security Gatekeeper ─────────────────────
+const DEFAULT_PASS_HASH = '86919d111dce9a26e647421f304cb91af4196896f11003f89a61850445c8e293'; // simpletravel@2026
+const LS_KEY_AUTH_HASH = 'st_auth_hash';
+const LS_KEY_AUTH_SESSION = 'st_auth_session';
+
+async function computeSHA256(text) {
+  const msgUint8 = new TextEncoder().encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+function initAuth() {
+  const authOverlay = $('auth-overlay');
+  const authCard = $('auth-card');
+  const authForm = $('auth-form');
+  const authPassword = $('auth-password');
+  const btnTogglePwd = $('btn-toggle-pwd');
+  const authError = $('auth-error');
+  const authRemember = $('auth-remember');
+  const btnHeaderLogout = $('btn-header-logout');
+  const btnHeaderChangePwd = $('btn-header-change-pwd');
+  const modalChangePwd = $('modal-change-pwd');
+  const btnChangePwdClose = $('btn-change-pwd-close');
+  const btnChangePwdCancel = $('btn-change-pwd-cancel');
+  const formChangePwd = $('form-change-pwd');
+  const pwdCurrent = $('pwd-current');
+  const pwdNew = $('pwd-new');
+  const pwdConfirm = $('pwd-confirm');
+  const changePwdError = $('change-pwd-error');
+
+  // Check initial state
+  const isAuth = localStorage.getItem(LS_KEY_AUTH_SESSION) === 'true' || sessionStorage.getItem(LS_KEY_AUTH_SESSION) === 'true';
+  if (!isAuth) {
+    document.documentElement.classList.add('auth-locked');
+    if (authOverlay) authOverlay.style.display = 'flex';
+    if (authPassword) setTimeout(() => authPassword.focus(), 200);
+  } else {
+    document.documentElement.classList.remove('auth-locked');
+    if (authOverlay) authOverlay.style.display = 'none';
+  }
+
+  // Toggle password visibility
+  if (btnTogglePwd && authPassword) {
+    btnTogglePwd.addEventListener('click', () => {
+      const isPwd = authPassword.type === 'password';
+      authPassword.type = isPwd ? 'text' : 'password';
+      btnTogglePwd.textContent = isPwd ? '🙈' : '👁️';
+    });
+  }
+
+  // Login handler
+  if (authForm) {
+    authForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const inputPass = (authPassword ? authPassword.value : '').trim();
+      if (!inputPass) {
+        if (authError) {
+          authError.textContent = 'Vui lòng nhập mật khẩu truy cập';
+          authError.style.display = 'block';
+        }
+        return;
+      }
+
+      const inputHash = await computeSHA256(inputPass);
+      const expectedHash = localStorage.getItem(LS_KEY_AUTH_HASH) || DEFAULT_PASS_HASH;
+
+      if (inputHash === expectedHash) {
+        if (authError) authError.style.display = 'none';
+        const remember = authRemember ? authRemember.checked : true;
+        if (remember) {
+          localStorage.setItem(LS_KEY_AUTH_SESSION, 'true');
+        } else {
+          sessionStorage.setItem(LS_KEY_AUTH_SESSION, 'true');
+        }
+        document.documentElement.classList.remove('auth-locked');
+        if (authOverlay) authOverlay.style.display = 'none';
+        if (authPassword) authPassword.value = '';
+        showToast('👋 Đăng nhập thành công! Chào mừng bạn.', 'success');
+      } else {
+        if (authError) {
+          authError.textContent = '❌ Mật khẩu không chính xác, vui lòng thử lại!';
+          authError.style.display = 'block';
+        }
+        if (authCard) {
+          authCard.classList.remove('auth-shake');
+          void authCard.offsetWidth; // trigger reflow
+          authCard.classList.add('auth-shake');
+        }
+        if (authPassword) {
+          authPassword.select();
+          authPassword.focus();
+        }
+      }
+    });
+  }
+
+  // Logout handler
+  if (btnHeaderLogout) {
+    btnHeaderLogout.addEventListener('click', () => {
+      if (!confirm('Bạn có chắc chắn muốn đăng xuất khỏi phiên làm việc này?')) return;
+      localStorage.removeItem(LS_KEY_AUTH_SESSION);
+      sessionStorage.removeItem(LS_KEY_AUTH_SESSION);
+      document.documentElement.classList.add('auth-locked');
+      if (authOverlay) authOverlay.style.display = 'flex';
+      if (authPassword) {
+        authPassword.value = '';
+        setTimeout(() => authPassword.focus(), 150);
+      }
+      if (authError) authError.style.display = 'none';
+      showToast('🚪 Đã đăng xuất', '');
+    });
+  }
+
+  // Change Password handlers
+  if (btnHeaderChangePwd && modalChangePwd) {
+    btnHeaderChangePwd.addEventListener('click', () => {
+      if (formChangePwd) formChangePwd.reset();
+      if (changePwdError) changePwdError.style.display = 'none';
+      modalChangePwd.style.display = 'flex';
+      if (pwdCurrent) setTimeout(() => pwdCurrent.focus(), 100);
+    });
+  }
+
+  function closeChangePwd() {
+    if (modalChangePwd) modalChangePwd.style.display = 'none';
+  }
+
+  if (btnChangePwdClose) btnChangePwdClose.addEventListener('click', closeChangePwd);
+  if (btnChangePwdCancel) btnChangePwdCancel.addEventListener('click', closeChangePwd);
+  if (modalChangePwd) {
+    modalChangePwd.addEventListener('click', (e) => {
+      if (e.target === modalChangePwd) closeChangePwd();
+    });
+  }
+
+  if (formChangePwd) {
+    formChangePwd.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const current = (pwdCurrent ? pwdCurrent.value : '').trim();
+      const newP = (pwdNew ? pwdNew.value : '').trim();
+      const confirmP = (pwdConfirm ? pwdConfirm.value : '').trim();
+
+      const expectedHash = localStorage.getItem(LS_KEY_AUTH_HASH) || DEFAULT_PASS_HASH;
+      const currentHash = await computeSHA256(current);
+
+      if (currentHash !== expectedHash) {
+        if (changePwdError) {
+          changePwdError.textContent = '❌ Mật khẩu hiện tại không đúng!';
+          changePwdError.style.display = 'block';
+        }
+        if (pwdCurrent) pwdCurrent.focus();
+        return;
+      }
+
+      if (newP.length < 6) {
+        if (changePwdError) {
+          changePwdError.textContent = '⚠️ Mật khẩu mới phải có tối thiểu 6 ký tự!';
+          changePwdError.style.display = 'block';
+        }
+        if (pwdNew) pwdNew.focus();
+        return;
+      }
+
+      if (newP !== confirmP) {
+        if (changePwdError) {
+          changePwdError.textContent = '⚠️ Xác nhận mật khẩu mới không khớp!';
+          changePwdError.style.display = 'block';
+        }
+        if (pwdConfirm) pwdConfirm.focus();
+        return;
+      }
+
+      const newHash = await computeSHA256(newP);
+      localStorage.setItem(LS_KEY_AUTH_HASH, newHash);
+      closeChangePwd();
+      showToast('🔑 Đã đổi mật khẩu mới thành công!', 'success');
+    });
+  }
+}
+
 // ─── Init ───────────────────────────────────────────────────
+initAuth();
 buildPresets();
 renderLuuYTemplates();
 initCollapsiblePanels();
