@@ -477,6 +477,10 @@
       transform: scale(0.95);
       background: #10B981;
     }
+    @keyframes etkt-spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -787,8 +791,10 @@
       };
     }
 
-    const rawData = parseTicketData() || SAMPLE_DATA;
-    const data = normalizeData(rawData);
+    let data = null;
+
+    function renderTicket(rawData) {
+      data = normalizeData(rawData);
 
     // Apply Theme Color & Header Gradient Sync
     if (data.color) {
@@ -992,6 +998,42 @@
       pCard.innerHTML = html;
       psCont.appendChild(pCard);
     }
+
+    async function init() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const pnrParam = urlParams.get('pnr');
+
+      if (pnrParam) {
+        const cleanPnr = pnrParam.trim().toUpperCase();
+        const pnrCodeEl = document.getElementById('pnr-code');
+        if (pnrCodeEl) pnrCodeEl.textContent = cleanPnr;
+        const flCont = document.getElementById('flights-container');
+        if (flCont) {
+          flCont.innerHTML = '<div style="text-align:center;padding:50px 20px;color:#64748B;"><div style="font-size:32px;display:inline-block;animation:etkt-spin 1.2s linear infinite;">✈️</div><p style="margin-top:12px;font-weight:600;font-size:14px;color:#1E293B;">Đang tải vé điện tử [' + cleanPnr + ']...</p></div>';
+        }
+        try {
+          const res = await fetch('/api/ticket?pnr=' + encodeURIComponent(cleanPnr));
+          if (res.ok) {
+            const json = await res.json();
+            if (json.success && json.ticketData) {
+              renderTicket(json.ticketData);
+              return;
+            }
+          }
+          if (flCont) {
+            flCont.innerHTML = '<div style="text-align:center;padding:35px 20px;color:#B91C1C;background:#FEF2F2;border:1px dashed #FCA5A5;border-radius:14px;margin:15px;"><div style="font-size:32px;">⚠️</div><p style="margin-top:10px;font-weight:700;font-size:15px;">Chưa tìm thấy vé [' + cleanPnr + ']</p><p style="margin-top:6px;font-size:12px;color:#64748B;line-height:1.5;">Booking có thể chưa được lưu lên hệ thống hoặc đường dẫn không đúng.<br>Vui lòng liên hệ Simple Travel qua <strong>Hotline: 0768.188.224</strong></p></div>';
+          }
+          return;
+        } catch (err) {
+          console.warn('Fetch ticket error:', err);
+        }
+      }
+
+      const rawData = parseTicketData() || SAMPLE_DATA;
+      renderTicket(rawData);
+    }
+
+    init();
 
 
     // Zalo Notice Banner Handling

@@ -951,7 +951,7 @@ function formatFlightSummary(data) {
     txt += (idx + 1) + '. ' + p.n + (tag ? ' (' + tag + ')' : '') + '\n';
   });
 
-  const linkToShare = state.shortUrl || state.mobileUrl;
+  const linkToShare = customLink || state.shortUrl || state.mobileUrl;
   if (linkToShare) {
     txt += '\n📱 Xem vé online: ' + linkToShare + '\n';
   }
@@ -968,10 +968,17 @@ function openMobileQRModal() {
   const ticketData = extractTicketData(iDoc);
   state.ticketData = ticketData;
   state.mobileUrl = generateMobileTicketUrl(ticketData);
-  mobileUrlInput.value = state.mobileUrl;
+
+  const pnr = ticketData.p || '';
+  const hist = getTicketHistory();
+  const savedRecord = hist.find(h => h.pnr === pnr);
+  const cloudUrl = (savedRecord && savedRecord.shortUrl) || (state.shortUrl && state.shortUrl.includes(pnr) ? state.shortUrl : '');
+  const effectiveUrl = cloudUrl || state.mobileUrl;
+
+  mobileUrlInput.value = effectiveUrl;
 
   // Populate flight summary textarea
-  const summaryTxt = formatFlightSummary(ticketData);
+  const summaryTxt = formatFlightSummary(ticketData, effectiveUrl);
   if (flightSummaryTextarea) {
     flightSummaryTextarea.value = summaryTxt;
   }
@@ -985,7 +992,7 @@ function openMobileQRModal() {
   const modalCtx = modalCanvas.getContext('2d');
   modalCtx.fillStyle = '#FFFFFF';
   modalCtx.fillRect(0, 0, 140, 140);
-  drawStylizedLeafQR(modalCanvas, state.mobileUrl, { size: 140 });
+  drawStylizedLeafQR(modalCanvas, effectiveUrl, { size: 140 });
   qrCodeContainer.appendChild(modalCanvas);
 
   const comp = LZString.compressToEncodedURIComponent(JSON.stringify(ticketData));
@@ -999,13 +1006,14 @@ function closeMobileQRModal() {
 }
 
 function copyMobileUrl() {
-  if (!state.mobileUrl) return;
-  navigator.clipboard.writeText(state.mobileUrl).then(() => {
-    showToast('📋 Đã sao chép link vé trực tuyến!', 'success');
+  const urlToCopy = (mobileUrlInput ? mobileUrlInput.value : null) || state.shortUrl || state.mobileUrl;
+  if (!urlToCopy) return;
+  navigator.clipboard.writeText(urlToCopy).then(() => {
+    showToast('📋 Đã sao chép link vé!', 'success');
   }).catch(() => {
-    mobileUrlInput.select();
+    if (mobileUrlInput) mobileUrlInput.select();
     document.execCommand('copy');
-    showToast('📋 Đã sao chép link vé trực tuyến!', 'success');
+    showToast('📋 Đã sao chép link vé!', 'success');
   });
 }
 
@@ -1071,7 +1079,7 @@ function generateStylizedQRCanvas(pnr, url, themeColor = BRAND_DEFAULT) {
 
 async function downloadStandaloneQR() {
   const pnr = state.ticketData?.p || 'SimpleTravel';
-  const url = state.mobileUrl;
+  const url = (mobileUrlInput ? mobileUrlInput.value : null) || state.shortUrl || state.mobileUrl;
   if (!url) {
     showToast('Chưa có dữ liệu để tạo mã QR', 'error');
     return;
@@ -2276,9 +2284,7 @@ function renderHistoryList(query = '') {
 async function downloadQRByPnr(pnr) {
   const history = getTicketHistory();
   const item = history.find(h => h.pnr === pnr);
-  if (!item) return;
-
-  const url = item.mobileUrl;
+  const url = item.shortUrl || item.mobileUrl;
   if (!url) {
     showToast('Chưa có link vé để tạo mã QR', 'error');
     return;
@@ -2364,6 +2370,11 @@ function copyFlightSummaryByPnr(pnr) {
     txt += 'Khách bay:\n' + item.passengers.split(', ').map((n, i) => (i+1) + '. ' + n).join('\n') + '\n';
   }
 
+  const linkToShare = item.shortUrl || item.mobileUrl;
+  if (linkToShare) {
+    txt += '\n📱 Xem vé online: ' + linkToShare + '\n';
+  }
+
   navigator.clipboard.writeText(txt.trim()).then(() => {
     showToast('📋 Đã copy tóm tắt vé ' + pnr, 'success');
   }).catch(() => {
@@ -2398,15 +2409,48 @@ if (btnToolbarHistory) {
   btnToolbarHistory.addEventListener('click', openHistoryModal);
 }
 if (btnSaveBooking) {
-  btnSaveBooking.addEventListener('click', () => {
-    const ok = saveTicketToHistory();
-    if (ok) {
-      const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-      const data = extractTicketData(iDoc);
-      const pnr = (data && data.p) ? data.p : (state.fileName || 'TICKET');
-      showToast('💾 Đã lưu booking [' + pnr + '] vào Lịch sử!', 'success');
-    } else {
+  btnSaveBooking.addEventListener('click', async () => {
+    const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+    if (!iDoc || !iDoc.body) {
       showToast('⚠️ Chưa có thông tin vé nào để lưu!', '');
+      return;
+    }
+    const data = extractTicketData(iDoc);
+    if (!data || !data.p) {
+      showToast('⚠️ Không tìm thấy mã đặt chỗ (PNR) để lưu!', '');
+      return;
+    }
+    const pnr = data.p;
+    const ok = saveTicketToHistory();
+    if (!ok) return;
+
+    showToast('⏳ Đang lưu [' + pnr + '] lên đám mây...');
+    try {
+      const res = await fetch('/api/ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pnr: pnr, ticketData: data })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+          state.shortUrl = shortUrl;
+          // Update record in history
+          const hist = getTicketHistory();
+          const rec = hist.find(h => h.pnr === pnr);
+          if (rec) {
+            rec.shortUrl = shortUrl;
+            localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
+          }
+          showToast('💾 Đã lưu booking & kích hoạt link: eticket.thesimple.media/' + pnr, 'success');
+          return;
+        }
+      }
+      showToast('💾 Đã lưu vào bộ nhớ máy (Đám mây chưa phản hồi)', '');
+    } catch (err) {
+      console.warn('Cloud save error:', err);
+      showToast('💾 Đã lưu vào bộ nhớ máy!', 'success');
     }
   });
 }

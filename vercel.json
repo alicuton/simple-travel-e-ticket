@@ -1,7 +1,10 @@
 {
   "version": 2,
   "rewrites": [
-    { "source": "/m", "destination": "/m.html" }
+    { "source": "/m", "destination": "/m.html" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/v/:pnr", "destination": "/m.html?pnr=:pnr" },
+    { "source": "/([a-zA-Z0-9_-]{5,8})", "destination": "/m.html?pnr=$1" }
   ],
   "headers": [
     {
