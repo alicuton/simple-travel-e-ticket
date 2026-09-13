@@ -362,6 +362,14 @@
       z-index: 1000;
       border-top: 1px solid rgba(255,255,255,0.1);
     }
+    /* When embedded in generator preview iframe, hide action buttons and banner */
+    body.in-preview .bottom-bar,
+    body.in-preview .zalo-notice-banner {
+      display: none !important;
+    }
+    body.in-preview {
+      padding-bottom: 24px !important;
+    }
     .btn-action {
       flex: 1;
       max-width: 210px;
@@ -559,6 +567,13 @@
         }
       }
       return dStr;
+    }
+
+    // If embedded in an iframe or preview mode, activate pure preview (no bottom buttons/banners)
+    const isPreview = window.self !== window.top || window.location.search.includes('preview=1');
+    if (isPreview) {
+      document.documentElement.classList.add('in-preview');
+      document.body.classList.add('in-preview');
     }
 
     // Parse Data from URL Hash

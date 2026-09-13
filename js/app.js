@@ -984,7 +984,7 @@ function openMobileQRModal() {
   qrCodeContainer.appendChild(modalCanvas);
 
   const comp = LZString.compressToEncodedURIComponent(JSON.stringify(ticketData));
-  mobilePreviewIframe.src = 'm.html#' + comp;
+  mobilePreviewIframe.src = 'm.html?preview=1#' + comp;
 
   modalMobileQR.style.display = 'flex';
 }
@@ -1895,6 +1895,10 @@ btnRemove.addEventListener('click', () => {
   panelFont.style.display = 'none';
   panelAirline.style.display = 'none';
   panelLuuY.style.display = 'none';
+  panelColors.classList.add('collapsed');
+  panelFont.classList.add('collapsed');
+  panelAirline.classList.add('collapsed');
+  panelLuuY.classList.add('collapsed');
   previewEmpty.style.display = '';
   previewToolbar.style.display = 'none';
   previewContainer.style.display = 'none';

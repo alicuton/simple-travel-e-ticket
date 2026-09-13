@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3.5">
+  <link rel="stylesheet" href="css/style.css?v=3.6">
 </head>
 <body>
 
@@ -69,14 +69,14 @@
       </div>
 
       <!-- Panel: Colors (hidden until file loaded) -->
-      <div class="panel panel--collapsible" id="panel-colors" style="display:none;">
+      <div class="panel panel--collapsible collapsed" id="panel-colors" style="display:none;">
         <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">2</span>
           <div style="flex:1;">
             <div class="panel__title">Màu thương hiệu</div>
             <div class="panel__desc">Chọn màu chủ đạo cho vé</div>
           </div>
-          <span class="panel__chevron">▾</span>
+          <svg class="panel__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="panel__body">
           <span class="ctrl-label">Màu gợi ý</span>
@@ -97,14 +97,14 @@
       </div>
 
       <!-- Panel: Font -->
-      <div class="panel panel--collapsible" id="panel-font" style="display:none;">
+      <div class="panel panel--collapsible collapsed" id="panel-font" style="display:none;">
         <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">3</span>
           <div style="flex:1;">
             <div class="panel__title">Phông chữ &amp; Cỡ chữ</div>
             <div class="panel__desc">Chọn font &amp; chỉnh cỡ chữ cho vé</div>
           </div>
-          <span class="panel__chevron">▾</span>
+          <svg class="panel__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="panel__body">
           <div style="margin-bottom:12px;">
@@ -140,14 +140,14 @@
       </div>
 
       <!-- Panel: Airline & Logo -->
-      <div class="panel panel--collapsible" id="panel-airline" style="display:none;">
+      <div class="panel panel--collapsible collapsed" id="panel-airline" style="display:none;">
         <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">4</span>
           <div style="flex:1;">
             <div class="panel__title">Hãng bay &amp; Logo</div>
             <div class="panel__desc">Tải logo riêng &amp; đổi tên hãng</div>
           </div>
-          <span class="panel__chevron">▾</span>
+          <svg class="panel__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="panel__body">
           <!-- Custom Upload Box -->
@@ -189,14 +189,14 @@
       </div>
 
       <!-- Panel: LƯU Ý -->
-      <div class="panel panel--collapsible" id="panel-luu-y" style="display:none;">
+      <div class="panel panel--collapsible collapsed" id="panel-luu-y" style="display:none;">
         <div class="panel__header" role="button" tabindex="0" title="Bấm để thu gọn/mở rộng">
           <span class="panel__step">5</span>
           <div style="flex:1;">
             <div class="panel__title">Phần LƯU Ý</div>
             <div class="panel__desc">Ẩn/hiện &amp; chỉnh sửa nội dung</div>
           </div>
-          <span class="panel__chevron">▾</span>
+          <svg class="panel__chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
         </div>
         <div class="panel__body">
           <div class="luu-y-toggle-row">
@@ -367,16 +367,16 @@
         <div class="modal-actions-col">
           <!-- Row 1: QR Code + Download Button + A4 QR Toggle -->
           <div class="modal-section-card qr-section-card">
-            <div class="qr-canvas-wrap" id="qr-code-container">
-              <!-- QRCode generated here -->
+            <div class="qr-col-left">
+              <div class="qr-canvas-wrap" id="qr-code-container">
+                <!-- QRCode generated here -->
+              </div>
+              <button class="btn btn--outline btn--sm" id="btn-download-qr" style="width:100%;white-space:nowrap;font-size:11.5px;padding:6px 6px;justify-content:center;">
+                ⬇️ Tải mã QR (PNG)
+              </button>
             </div>
             <div class="qr-section-details">
-              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-                <span class="qr-title" style="margin:0;">Mã QR xem vé trực tuyến</span>
-                <button class="btn btn--outline btn--sm" id="btn-download-qr">
-                  ⬇️ Tải mã QR (PNG)
-                </button>
-              </div>
+              <span class="qr-title" style="margin:0;">Mã QR xem vé trực tuyến</span>
               <p class="qr-desc" style="margin:6px 0 10px;">
                 Quét bằng <strong>Camera</strong> hoặc <strong>Zalo</strong> để mở vé ngay trên điện thoại (không cần cài app).
               </p>
@@ -454,6 +454,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=3.8"></script>
+  <script src="js/app.js?v=3.9"></script>
 </body>
 </html>
