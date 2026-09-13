@@ -727,10 +727,15 @@ function generateMobileTicketUrl(ticketData) {
 
   const compact = 'v3:' + [p, a, c, g, fls, pxs].join('|');
 
-  const origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+  let origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
+  // Default to official production subdomain if running locally or offline
+  if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('file')) {
+    origin = 'https://eticket.thesimple.media';
+  }
   const idx = window.location.pathname.lastIndexOf('/');
-  const path = (idx !== -1 ? window.location.pathname.slice(0, idx) : '') + '/m.html';
-  return (origin ? origin + path : 'm.html') + '#' + encodeURI(compact);
+  const isCustomDomain = origin.includes('thesimple.media');
+  const basePath = (!isCustomDomain && idx !== -1) ? window.location.pathname.slice(0, idx) : '';
+  return origin + basePath + '/m.html#' + encodeURI(compact);
 }
 
 function drawStylizedLeafQR(targetCanvas, text, options = {}) {

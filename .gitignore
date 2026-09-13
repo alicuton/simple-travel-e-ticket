@@ -3,3 +3,4 @@ scratch/
 node_modules/
 .DS_Store
 *.log
+*_ALL_PASSENGERS.html
