@@ -446,10 +446,14 @@
           <div class="modal-section-card share-section-card">
             <!-- Line 1: Ticket Link -->
             <div style="margin-bottom:12px;">
-              <label class="ctrl-label" style="font-size:12px;font-weight:700;color:var(--brand-dark);margin-bottom:4px;">Đường dẫn vé trực tuyến</label>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <label class="ctrl-label" style="font-size:12px;font-weight:700;color:var(--brand-dark);margin:0;">Đường dẫn vé trực tuyến</label>
+                <span id="cloud-link-badge" style="font-size:11px;font-weight:600;"></span>
+              </div>
               <div class="share-link-row">
                 <input type="text" id="mobile-url-input" readonly class="share-link-input" spellcheck="false">
-                <button class="btn btn--outline btn--sm" id="btn-copy-mobile-url" title="Sao chép link vé trực tuyến" style="white-space:nowrap;">📋 Copy link</button>
+                <button class="btn btn--outline btn--sm" id="btn-copy-mobile-url" title="Sao chép link vé trực tuyến" style="white-space:nowrap;">📋 Copy</button>
+                <button class="btn btn--primary btn--sm" id="btn-modal-save-cloud" title="Lưu booking lên đám mây để tạo link ngắn" style="white-space:nowrap;">💾 Lưu link ngắn</button>
               </div>
             </div>
 
@@ -538,6 +542,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="js/vendor/lz-string.min.js"></script>
   <script src="js/vendor/qrcode.min.js"></script>
-  <script src="js/app.js?v=4.3"></script>
+  <script src="js/app.js?v=4.4"></script>
 </body>
 </html>

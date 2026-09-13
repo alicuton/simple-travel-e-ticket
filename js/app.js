@@ -977,10 +977,29 @@ function openMobileQRModal() {
     const pnr = ticketData.p || '';
     const hist = getTicketHistory();
     const savedRecord = hist.find(h => h.pnr === pnr);
-    const cloudUrl = (savedRecord && savedRecord.shortUrl) || (state.shortUrl && state.shortUrl.includes(pnr) ? state.shortUrl : '');
+    const isSaved = !!cloudUrl;
     const effectiveUrl = cloudUrl || state.mobileUrl;
 
     if (mobileUrlInput) mobileUrlInput.value = effectiveUrl;
+
+    const cloudBadge = $('cloud-link-badge');
+    const btnModalSaveCloud = $('btn-modal-save-cloud');
+    if (cloudBadge) {
+      cloudBadge.innerHTML = isSaved 
+        ? '<span style="color:#10B981;">⚡ Link ngắn đám mây</span>' 
+        : '<span style="color:#F5A623;">⏳ Link dài (chưa lưu đám mây)</span>';
+    }
+    if (btnModalSaveCloud) {
+      if (isSaved) {
+        btnModalSaveCloud.innerHTML = '✅ Đã lưu';
+        btnModalSaveCloud.disabled = true;
+        btnModalSaveCloud.style.opacity = '0.6';
+      } else {
+        btnModalSaveCloud.innerHTML = '💾 Lưu link ngắn';
+        btnModalSaveCloud.disabled = false;
+        btnModalSaveCloud.style.opacity = '1';
+      }
+    }
 
     // Populate flight summary textarea
     const summaryTxt = formatFlightSummary(ticketData, effectiveUrl);
@@ -2124,6 +2143,85 @@ if (btnDownloadMobileImg) {
 }
 if (btnCopyMobileImg) {
   btnCopyMobileImg.addEventListener('click', copyMobileImage);
+}
+
+const btnModalSaveCloud = $('btn-modal-save-cloud');
+if (btnModalSaveCloud) {
+  btnModalSaveCloud.addEventListener('click', async () => {
+    const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
+    if (!iDoc || !iDoc.body) {
+      showToast('⚠️ Chưa có thông tin vé!', '');
+      return;
+    }
+    const data = extractTicketData(iDoc);
+    if (!data || !data.p) {
+      showToast('⚠️ Không tìm thấy mã đặt chỗ (PNR)!', '');
+      return;
+    }
+    const pnr = data.p;
+    saveTicketToHistory();
+
+    btnModalSaveCloud.disabled = true;
+    btnModalSaveCloud.innerHTML = '⏳ Đang lưu...';
+    try {
+      const res = await fetch('/api/ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pnr: pnr, ticketData: data })
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+          state.shortUrl = shortUrl;
+          
+          const hist = getTicketHistory();
+          const rec = hist.find(h => h.pnr === pnr);
+          if (rec) {
+            rec.shortUrl = shortUrl;
+            localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
+          }
+
+          if (mobileUrlInput) mobileUrlInput.value = shortUrl;
+          const cloudBadge = $('cloud-link-badge');
+          if (cloudBadge) cloudBadge.innerHTML = '<span style="color:#10B981;">⚡ Link ngắn đám mây</span>';
+          btnModalSaveCloud.innerHTML = '✅ Đã lưu';
+          btnModalSaveCloud.style.opacity = '0.6';
+
+          // Redraw QR with shortUrl
+          if (qrCodeContainer) {
+            qrCodeContainer.innerHTML = '';
+            const modalCanvas = document.createElement('canvas');
+            modalCanvas.width = 140;
+            modalCanvas.height = 140;
+            modalCanvas.style.display = 'block';
+            modalCanvas.style.margin = '0 auto';
+            const modalCtx = modalCanvas.getContext('2d');
+            modalCtx.fillStyle = '#FFFFFF';
+            modalCtx.fillRect(0, 0, 140, 140);
+            drawStylizedLeafQR(modalCanvas, shortUrl, { size: 140 });
+            qrCodeContainer.appendChild(modalCanvas);
+          }
+
+          if (flightSummaryTextarea) {
+            flightSummaryTextarea.value = formatFlightSummary(data, shortUrl);
+          }
+
+          navigator.clipboard.writeText(shortUrl);
+          showToast('💾 Đã lưu & kích hoạt link ngắn: ' + shortUrl, 'success');
+          return;
+        }
+      }
+      btnModalSaveCloud.disabled = false;
+      btnModalSaveCloud.innerHTML = '💾 Lưu link ngắn';
+      showToast('⚠️ Không thể lưu lên đám mây', 'error');
+    } catch (err) {
+      console.warn('Modal save error:', err);
+      btnModalSaveCloud.disabled = false;
+      btnModalSaveCloud.innerHTML = '💾 Lưu link ngắn';
+      showToast('⚠️ Lỗi kết nối đám mây', 'error');
+    }
+  });
 }
 if (a4QRToggle) {
   a4QRToggle.addEventListener('change', e => {
