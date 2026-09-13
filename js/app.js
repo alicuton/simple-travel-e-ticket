@@ -2551,15 +2551,21 @@ function deleteHistoryItem(pnr) {
     localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
   } catch (e) {}
   renderHistoryList(historySearchInput ? historySearchInput.value : '');
+  
+  // Also delete from Upstash cloud
+  fetch('/api/ticket?pnr=' + encodeURIComponent(pnr), { method: 'DELETE' }).catch(() => {});
   showToast('🗑️ Đã xóa vé ' + pnr, '');
 }
 
 function clearAllHistory() {
-  if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử vé đã lưu?')) return;
+  if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử vé đã lưu cả trên máy và đám mây?')) return;
   try {
     localStorage.removeItem(LS_KEY_HISTORY);
   } catch (e) {}
   renderHistoryList();
+
+  // Also flush all test tickets from Upstash cloud
+  fetch('/api/ticket?all=true', { method: 'DELETE' }).catch(() => {});
   showToast('🧹 Đã xóa toàn bộ lịch sử vé', '');
 }
 

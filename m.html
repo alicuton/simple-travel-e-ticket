@@ -1002,7 +1002,15 @@
 
     async function init() {
       const urlParams = new URLSearchParams(window.location.search);
-      const pnrParam = urlParams.get('pnr');
+      let pnrParam = urlParams.get('pnr');
+
+      // Also detect clean short path like /KBSYWF directly from window.location.pathname!
+      if (!pnrParam) {
+        const pathSegments = window.location.pathname.split('/').filter(Boolean);
+        if (pathSegments.length === 1 && /^[A-Za-z0-9_-]{5,8}$/.test(pathSegments[0])) {
+          pnrParam = pathSegments[0];
+        }
+      }
 
       if (pnrParam) {
         const cleanPnr = pnrParam.trim().toUpperCase();

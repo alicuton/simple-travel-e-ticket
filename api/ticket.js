@@ -1,4 +1,4 @@
-﻿// Serverless function on Vercel: /api/ticket
+// Serverless function on Vercel: /api/ticket
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -83,6 +83,44 @@ module.exports = async (req, res) => {
     } catch (err) {
       console.error('Save ticket error:', err);
       return res.status(500).json({ error: 'Failed to save ticket', details: err.message });
+    }
+  }
+
+  if (req.method === 'DELETE') {
+    const { pnr, all } = req.query;
+    try {
+      if (all === 'true' || all === '1') {
+        // Find all ticket:* keys and delete them
+        const keysRes = await fetch(`${kvUrl}/keys/ticket:*`, {
+          headers: { Authorization: `Bearer ${kvToken}` }
+        });
+        const keysData = await keysRes.json();
+        const keys = keysData.result || [];
+        if (keys.length > 0) {
+          await fetch(kvUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${kvToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(['DEL', ...keys])
+          });
+        }
+        return res.status(200).json({ success: true, message: 'All test tickets cleared', count: keys.length });
+      }
+
+      if (pnr) {
+        const cleanPnr = String(pnr).trim().toUpperCase();
+        await fetch(`${kvUrl}/del/ticket:${cleanPnr}`, {
+          headers: { Authorization: `Bearer ${kvToken}` }
+        });
+        return res.status(200).json({ success: true, message: `Deleted ticket ${cleanPnr}` });
+      }
+
+      return res.status(400).json({ error: 'Missing pnr or all parameter' });
+    } catch (err) {
+      console.error('Delete ticket error:', err);
+      return res.status(500).json({ error: 'Failed to delete ticket', details: err.message });
     }
   }
 
