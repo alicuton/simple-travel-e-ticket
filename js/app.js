@@ -2489,6 +2489,12 @@ function saveTicketToHistory(options = { promptOverwrite: false }) {
   return true;
 }
 
+// Helper to strip heavy redundant @font-face from HTML before syncing to cloud
+function getCleanRawHTML(html) {
+  if (!html) return null;
+  return html.replace(/@font-face\s*\{[\s\S]*?\}/gi, '').trim();
+}
+
 // ─── Cloud Synchronization (Upstash Redis <-> LocalStorage) ───
 async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
   if (!pnr) return null;
@@ -2496,6 +2502,7 @@ async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
   try {
     const hist = getTicketHistory();
     const rec = customRecord || hist.find(h => h.pnr === cleanPnr);
+    const htmlToSync = getCleanRawHTML((rec && rec.rawHTML) || state.rawHTML);
     const payload = {
       pnr: cleanPnr,
       ticketData: ticketData,
@@ -2512,6 +2519,8 @@ async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
         fontFamily: rec.fontFamily || 'Inter',
         fontScale: rec.fontScale || 100,
         ticketData: ticketData,
+        rawHTML: htmlToSync,
+        fileName: rec.fileName || (cleanPnr + '.html'),
         savedAtTimestamp: rec.savedAtTimestamp || Date.now(),
         updatedAt: rec.updatedAt || new Date().toLocaleString('vi-VN', {
           hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric'
@@ -2646,6 +2655,10 @@ async function syncHistoryWithCloud(showNotice = false) {
         }
         if (!local.flightTimestamp && normalized.flightTimestamp) {
           local.flightTimestamp = normalized.flightTimestamp;
+          itemUpdated = true;
+        }
+        if (!local.rawHTML && normalized.rawHTML) {
+          local.rawHTML = normalized.rawHTML;
           itemUpdated = true;
         }
         if (itemUpdated) changeCount++;
@@ -2867,14 +2880,10 @@ function loadTicketFromHistory(pnr) {
     return;
   }
   if (!item.rawHTML) {
-    const isMobile = window.innerWidth <= 768;
     const targetUrl = item.shortUrl || item.mobileUrl || ('https://eticket.thesimple.media/' + pnr);
-    if (isMobile) {
-      window.open(targetUrl, '_blank');
-      showToast('📱 Đang mở vé điện tử: ' + pnr, 'info');
-      return;
-    }
-    showToast('ℹ️ File thiết kế A4 gốc lưu trên máy tính đã tạo vé. Bấm "Mobile" để xem vé online!', 'info');
+    window.open(targetUrl, '_blank');
+    closeHistoryModal();
+    showToast('📱 Đang mở xem vé: ' + pnr, 'info');
     return;
   }
 
