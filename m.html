@@ -947,11 +947,11 @@
       });
       let baggageHtml = '';
       if (f.baggage && extraBags.length > 0) {
-        baggageHtml = `<span>🧳 Ký gửi: <strong>${f.baggage} + ${extraBags.join(', ')}</strong></span>`;
+        baggageHtml = `<span>Ký gửi: <strong>${f.baggage} + ${extraBags.join(', ')}</strong></span>`;
       } else if (f.baggage) {
-        baggageHtml = `<span>🧳 Ký gửi: <strong>${f.baggage}</strong></span>`;
+        baggageHtml = `<span>Ký gửi: <strong>${f.baggage}</strong></span>`;
       } else if (extraBags.length > 0) {
-        baggageHtml = `<span>🧳 Ký gửi: <strong>${extraBags.join(', ')}</strong></span>`;
+        baggageHtml = `<span>Ký gửi: <strong>${extraBags.join(', ')}</strong></span>`;
       } else {
         baggageHtml = '<span style="color:#94A3B8;">Ký gửi: Không có</span>';
       }
@@ -969,7 +969,7 @@
             <span>Hạng: <strong>${f.ticketClass || 'ECO'}</strong></span>
           </div>
           <div class="meta-row baggage-row">
-            <span>🧳 Xách tay: <strong>${f.carryOn || '07kg'}</strong></span>
+            <span>Xách tay: <strong>${f.carryOn || '07kg'}</strong></span>
             ${baggageHtml}
           </div>
         </div>
