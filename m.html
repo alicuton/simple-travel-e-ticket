@@ -519,10 +519,9 @@
       <div class="zalo-notice-body">
         <div class="zalo-notice-title">Mở bằng trình duyệt máy để tải ảnh vé</div>
         <div class="zalo-notice-text">
-          Bấm nút <strong>[ ••• ]</strong> ở góc trên Zalo ➔ Chọn <strong>"Mở bằng trình duyệt"</strong> (Safari / Chrome)
+          Bấm nút <strong>「Mở trình duyệt」</strong> bên dưới, hoặc bấm <strong>[ ••• ]</strong> ở góc trên Zalo ➔ Chọn <strong>"Mở bằng trình duyệt"</strong>
         </div>
       </div>
-      <button id="btn-banner-copy-link" class="btn-banner-copy-link" title="Copy link vé">🔗 Copy link</button>
     </div>
 
     <!-- Card to capture -->
@@ -1150,9 +1149,16 @@
     const zaloNoticeBanner = document.getElementById('zalo-notice-banner');
     if (isZalo && zaloNoticeBanner) {
       zaloNoticeBanner.style.display = 'flex';
+      // Swap bottom bar buttons for Zalo
+      const btnSave = document.getElementById('btn-save-img');
+      if (btnSave) {
+        btnSave.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Mở trình duyệt';
+      }
+      const btnCopy = document.getElementById('btn-copy-info');
+      if (btnCopy) {
+        btnCopy.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Copy tóm tắt';
+      }
     }
-
-    const btnBannerCopyLink = document.getElementById('btn-banner-copy-link');
 
     function copyTicketLink(btnEl) {
       const urlToCopy = window.location.href;
@@ -1192,10 +1198,6 @@
       try { document.execCommand('copy'); } catch(e) {}
       document.body.removeChild(ta);
       if (cb) cb();
-    }
-
-    if (btnBannerCopyLink) {
-      btnBannerCopyLink.addEventListener('click', () => copyTicketLink(btnBannerCopyLink));
     }
 
     // Action: Save Image (Zalo, Safari, Mobile & Desktop optimized)
