@@ -859,7 +859,7 @@
           const fromCode = (f.depCode || f.from || '').toUpperCase().trim();
           const toCode = (f.arrCode || f.to || '').toUpperCase().trim();
           return {
-            title: f.title || ((fromCode || '') + ' → ' + (toCode || '')),
+            title: f.title || ((fromCode || '') + ' ✈ ' + (toCode || '')),
             carrier: f.carrier || d.airline || d.a || 'Vietjet Air',
             flightNum: f.flightNum || f.fn || '',
             ticketClass: f.ticketClass || f.fc || 'ECO',
@@ -960,7 +960,7 @@
       card.className = 'flight-card';
       card.innerHTML = `
         <div class="flight-card__header">
-          <span>✈ ${f.title || (f.depCode + ' → ' + f.arrCode)}</span>
+          <span>${f.title || (f.depCode + ' ✈ ' + f.arrCode)}</span>
           <span>${f.flightNum || ''}</span>
         </div>
         <div class="flight-card__meta">
