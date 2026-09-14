@@ -566,6 +566,14 @@ function extractTicketData(doc) {
       const etAirport = tbl.querySelector('.be-end-airport');
       const aap = etAirport ? etAirport.textContent.trim() : '';
 
+      const stCountry = tbl.querySelector('.be-start-country');
+      const stCity = tbl.querySelector('.be-start-city');
+      const dcy = stCountry ? stCountry.textContent.trim() : (stCity ? stCity.textContent.trim() : '');
+
+      const etCountry = tbl.querySelector('.be-end-country');
+      const etCity = tbl.querySelector('.be-end-city');
+      const acy = etCountry ? etCountry.textContent.trim() : (etCity ? etCity.textContent.trim() : '');
+
       flights.push({
         fn,
         fc,
@@ -580,7 +588,9 @@ function extractTicketData(doc) {
         dtm,
         atm,
         dap,
-        aap
+        aap,
+        dcy,
+        acy
       });
     });
   } else {
@@ -598,6 +608,8 @@ function extractTicketData(doc) {
     const etTerminals = Array.from(doc.querySelectorAll('.be-end-terminal'));
     const stAirports = Array.from(doc.querySelectorAll('.be-start-airport'));
     const etAirports = Array.from(doc.querySelectorAll('.be-end-airport'));
+    const stCountries = Array.from(doc.querySelectorAll('.be-start-country'));
+    const etCountries = Array.from(doc.querySelectorAll('.be-end-country'));
 
     const count = Math.max(fnRows.length, stTimes.length, 1);
     for (let i = 0; i < count; i++) {
@@ -625,7 +637,9 @@ function extractTicketData(doc) {
       const atm = etTerminals[i] ? etTerminals[i].textContent.trim() : '';
       const dap = stAirports[i] ? stAirports[i].textContent.trim() : '';
       const aap = etAirports[i] ? etAirports[i].textContent.trim() : '';
-      flights.push({ fn, fc, from, to, dt, dd, at, ad, hb, ab, dtm, atm, dap, aap });
+      const dcy = stCountries[i] ? stCountries[i].textContent.trim() : '';
+      const acy = etCountries[i] ? etCountries[i].textContent.trim() : '';
+      flights.push({ fn, fc, from, to, dt, dd, at, ad, hb, ab, dtm, atm, dap, aap, dcy, acy });
     }
   }
 

@@ -167,6 +167,13 @@
     }
     .route-node.origin { text-align: left; }
     .route-node.dest { text-align: right; }
+    .route-date {
+      font-size: 11px;
+      font-weight: 600;
+      color: #0F172A;
+      margin-bottom: 2px;
+      line-height: 1.3;
+    }
     .route-time {
       font-size: 22px;
       font-weight: 800;
@@ -174,21 +181,36 @@
       line-height: 1.1;
     }
     .route-code {
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 22px;
+      font-weight: 800;
       color: var(--sp-dark);
+      line-height: 1.15;
+      margin: 2px 0;
+    }
+    .route-city {
+      font-size: 11px;
+      font-weight: 600;
+      color: #0F172A;
+      margin-top: 3px;
+      line-height: 1.3;
+    }
+    .route-airport {
+      font-size: 11px;
+      font-weight: 500;
+      color: #334155;
       margin-top: 2px;
+      line-height: 1.3;
     }
     .route-terminal {
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 700;
-      color: #0F172A;
+      color: #334155;
       background: #F1F5F9;
-      border: 1px solid #E2E8F0;
+      border: none;
       display: inline-block;
-      padding: 1px 7px;
+      padding: 2px 7px;
       border-radius: 4px;
-      margin: 3px 0 2px;
+      margin-top: 4px;
       width: fit-content;
       line-height: 1.35;
     }
@@ -198,24 +220,13 @@
     .route-node.dest .route-terminal {
       align-self: flex-end;
     }
-    .route-date {
-      font-size: 10.5px;
-      color: var(--text-muted);
-      margin-top: 3px;
-    }
-    .route-airport {
-      font-size: 11px;
-      font-weight: 600;
-      color: #334155;
-      margin-top: 3px;
-    }
     .route-mid {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 0 4px;
-      margin-top: 4px;
+      margin-top: 22px;
     }
     .route-plane-icon {
       color: var(--sp);
@@ -278,9 +289,9 @@
       color: #64748B;
     }
     .passenger-ticket-no {
-      font-family: monospace;
-      font-weight: 600;
-      color: #475569;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: 700;
+      color: #0F172A;
     }
     .passenger-service-row {
       margin-top: 4px;
@@ -780,6 +791,71 @@
       email: 'booking@thesimple.media'
     };
 
+    const AIRPORT_CITIES = {
+      SGN: 'Hồ Chí Minh, Việt Nam',
+      HAN: 'Hà Nội, Việt Nam',
+      DAD: 'Đà Nẵng, Việt Nam',
+      CXR: 'Nha Trang, Việt Nam',
+      PQC: 'Phú Quốc, Việt Nam',
+      PXU: 'Pleiku, Việt Nam',
+      VCL: 'Chu Lai, Việt Nam',
+      HPH: 'Hải Phòng, Việt Nam',
+      VII: 'Vinh, Việt Nam',
+      HUI: 'Huế, Việt Nam',
+      BMV: 'Buôn Ma Thuột, Việt Nam',
+      VDO: 'Vân Đồn, Việt Nam',
+      UIH: 'Quy Nhơn, Việt Nam',
+      THD: 'Thanh Hóa, Việt Nam',
+      VCA: 'Cần Thơ, Việt Nam',
+      DLI: 'Đà Lạt, Việt Nam',
+      DIN: 'Điện Biên, Việt Nam',
+      VCS: 'Côn Đảo, Việt Nam',
+      VKG: 'Rạch Giá, Việt Nam',
+      CAH: 'Cà Mau, Việt Nam',
+      TBB: 'Tuy Hòa, Việt Nam',
+      VDH: 'Đồng Hới, Việt Nam',
+      BKK: 'Bangkok, Thái Lan',
+      DMK: 'Bangkok, Thái Lan',
+      SIN: 'Singapore',
+      KUL: 'Kuala Lumpur, Malaysia',
+      ICN: 'Seoul, Hàn Quốc',
+      PUS: 'Busan, Hàn Quốc',
+      NRT: 'Tokyo, Nhật Bản',
+      KIX: 'Osaka, Nhật Bản',
+      TPE: 'Đài Bắc, Đài Loan',
+      KHH: 'Cao Hùng, Đài Loan',
+      HKG: 'Hồng Kông',
+      MEL: 'Melbourne, Úc',
+      SYD: 'Sydney, Úc',
+      BNE: 'Brisbane, Úc',
+      PER: 'Perth, Úc'
+    };
+
+    const AIRPORT_NAMES = {
+      SGN: 'Sân bay Tân Sơn Nhất',
+      HAN: 'Sân bay Nội Bài',
+      DAD: 'Sân bay Đà Nẵng',
+      CXR: 'Sân bay Cam Ranh',
+      PQC: 'Sân bay Phú Quốc',
+      PXU: 'Sân bay Pleiku',
+      VCL: 'Sân bay Chu Lai',
+      HPH: 'Sân bay Cát Bi',
+      VII: 'Sân bay Vinh',
+      HUI: 'Sân bay Phú Bài',
+      BMV: 'Sân bay Buôn Ma Thuột',
+      VDO: 'Sân bay Vân Đồn',
+      UIH: 'Sân bay Phù Cát',
+      THD: 'Sân bay Thọ Xuân',
+      VCA: 'Sân bay Cần Thơ',
+      DLI: 'Sân bay Liên Khương',
+      DIN: 'Sân bay Điện Biên',
+      VCS: 'Sân bay Côn Đảo',
+      VKG: 'Sân bay Rạch Giá',
+      CAH: 'Sân bay Cà Mau',
+      TBB: 'Sân bay Tuy Hòa',
+      VDH: 'Sân bay Đồng Hới'
+    };
+
     function normalizeData(d) {
       if (!d) return null;
       return {
@@ -788,24 +864,30 @@
         color: d.color || d.c || '#F5A623',
         useGradient: d.g !== undefined ? d.g : (d.useGradient !== undefined ? d.useGradient : false),
         hotline: d.hotline || d.h || '0768.188.224',
-        flights: (d.flights || d.f || []).map(f => ({
-          title: f.title || ((f.depCode || f.from || '') + ' → ' + (f.arrCode || f.to || '')),
-          carrier: f.carrier || d.airline || d.a || 'Vietjet Air',
-          flightNum: f.flightNum || f.fn || '',
-          ticketClass: f.ticketClass || f.fc || 'ECO',
-          carryOn: f.carryOn || f.hb || '07kg',
-          baggage: f.baggage || f.ab || '',
-          depTime: f.depTime || f.dt || '',
-          depCode: f.depCode || f.from || '',
-          depDate: f.depDate || f.dd || '',
-          depAirport: f.depAirport || f.dap || '',
-          depTerminal: f.depTerminal || f.dtm || '',
-          arrTime: f.arrTime || f.at || '',
-          arrCode: f.arrCode || f.to || '',
-          arrDate: f.arrDate || f.ad || '',
-          arrAirport: f.arrAirport || f.aap || '',
-          arrTerminal: f.arrTerminal || f.atm || ''
-        })),
+        flights: (d.flights || d.f || []).map(f => {
+          const fromCode = (f.depCode || f.from || '').toUpperCase().trim();
+          const toCode = (f.arrCode || f.to || '').toUpperCase().trim();
+          return {
+            title: f.title || ((fromCode || '') + ' → ' + (toCode || '')),
+            carrier: f.carrier || d.airline || d.a || 'Vietjet Air',
+            flightNum: f.flightNum || f.fn || '',
+            ticketClass: f.ticketClass || f.fc || 'ECO',
+            carryOn: f.carryOn || f.hb || '07kg',
+            baggage: f.baggage || f.ab || '',
+            depTime: f.depTime || f.dt || '',
+            depCode: fromCode,
+            depDate: f.depDate || f.dd || '',
+            depCity: f.depCity || f.dcy || AIRPORT_CITIES[fromCode] || '',
+            depAirport: f.depAirport || f.dap || AIRPORT_NAMES[fromCode] || '',
+            depTerminal: f.depTerminal || f.dtm || '',
+            arrTime: f.arrTime || f.at || '',
+            arrCode: toCode,
+            arrDate: f.arrDate || f.ad || f.depDate || f.dd || '',
+            arrCity: f.arrCity || f.acy || AIRPORT_CITIES[toCode] || '',
+            arrAirport: f.arrAirport || f.aap || AIRPORT_NAMES[toCode] || '',
+            arrTerminal: f.arrTerminal || f.atm || ''
+          };
+        }),
         passengers: (d.passengers || d.px || []).map(p => ({
           name: p.name || p.n || '',
           type: p.type || p.t || 'Adult',
@@ -902,22 +984,24 @@
         </div>
         <div class="flight-route-grid">
           <div class="route-node origin">
+            <div class="route-date">${f.depDate || ''}</div>
             <div class="route-time">${f.depTime || ''}</div>
             <div class="route-code">${f.depCode || ''}</div>
+            ${f.depCity ? '<div class="route-city">' + f.depCity + '</div>' : ''}
+            ${f.depAirport ? '<div class="route-airport">' + f.depAirport + '</div>' : ''}
             ${f.depTerminal ? '<div class="route-terminal">' + f.depTerminal + '</div>' : ''}
-            <div class="route-date">${f.depDate || ''}</div>
-            <div class="route-airport">${f.depAirport || ''}</div>
           </div>
           <div class="route-mid">
             <span class="route-plane-icon">✈</span>
             <span class="route-dur">${f.duration || ''}</span>
           </div>
           <div class="route-node dest">
+            <div class="route-date">${f.arrDate || ''}</div>
             <div class="route-time">${f.arrTime || ''}</div>
             <div class="route-code">${f.arrCode || ''}</div>
+            ${f.arrCity ? '<div class="route-city">' + f.arrCity + '</div>' : ''}
+            ${f.arrAirport ? '<div class="route-airport">' + f.arrAirport + '</div>' : ''}
             ${f.arrTerminal ? '<div class="route-terminal">' + f.arrTerminal + '</div>' : ''}
-            <div class="route-date">${f.arrDate || ''}</div>
-            <div class="route-airport">${f.arrAirport || ''}</div>
           </div>
         </div>
         ${f.aircraft ? '<div style="padding:6px 14px 10px;font-size:10px;color:#64748B;background:#FFF;border-top:1px dashed #F1F5F9;">Máy bay: <strong>' + f.aircraft + '</strong></div>' : ''}
