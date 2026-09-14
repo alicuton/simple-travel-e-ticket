@@ -72,7 +72,13 @@ module.exports = async (req, res) => {
         values.forEach(v => {
           if (v) {
             try {
-              tickets.push(typeof v === 'string' ? JSON.parse(v) : v);
+              const item = typeof v === 'string' ? JSON.parse(v) : v;
+              if (item && typeof item === 'object') {
+                const { rawHTML, ...summary } = item;
+                tickets.push(summary);
+              } else {
+                tickets.push(item);
+              }
             } catch(e) {}
           }
         });

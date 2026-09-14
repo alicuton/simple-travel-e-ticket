@@ -2367,13 +2367,112 @@ if (a4QRToggle) {
   });
 }
 
+// ─── IndexedDB Storage for Large Ticket HTML ──────────────────
+const IDB_NAME = 'st_eticket_db';
+const IDB_STORE = 'ticket_html_store';
+const IDB_VERSION = 1;
+
+function openTicketDB() {
+  return new Promise(resolve => {
+    if (!window.indexedDB) return resolve(null);
+    const req = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'pnr' });
+      }
+    };
+    req.onsuccess = e => resolve(e.target.result);
+    req.onerror = e => {
+      console.warn('IndexedDB open error:', e);
+      resolve(null);
+    };
+  });
+}
+
+async function idbSaveTicketHTML(pnr, rawHTML) {
+  if (!pnr || !rawHTML) return false;
+  try {
+    const db = await openTicketDB();
+    if (!db) return false;
+    return new Promise(resolve => {
+      const tx = db.transaction(IDB_STORE, 'readwrite');
+      const store = tx.objectStore(IDB_STORE);
+      store.put({ pnr: String(pnr).toUpperCase().trim(), html: rawHTML, updatedAt: Date.now() });
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => resolve(false);
+    });
+  } catch (err) {
+    console.warn('idbSaveTicketHTML error:', err);
+    return false;
+  }
+}
+
+async function idbGetTicketHTML(pnr) {
+  if (!pnr) return null;
+  try {
+    const db = await openTicketDB();
+    if (!db) return null;
+    return new Promise(resolve => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.get(String(pnr).toUpperCase().trim());
+      req.onsuccess = () => {
+        resolve(req.result ? req.result.html : null);
+      };
+      req.onerror = () => resolve(null);
+    });
+  } catch (err) {
+    console.warn('idbGetTicketHTML error:', err);
+    return null;
+  }
+}
+
+async function idbDeleteTicketHTML(pnr) {
+  if (!pnr) return;
+  try {
+    const db = await openTicketDB();
+    if (!db) return;
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).delete(String(pnr).toUpperCase().trim());
+  } catch (err) {}
+}
+
+async function idbClearAllTickets() {
+  try {
+    const db = await openTicketDB();
+    if (!db) return;
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).clear();
+  } catch (err) {}
+}
+
 // ─── Booking Code History Management ─────────────────────────
 const LS_KEY_HISTORY = 'st_eticket_history_v1';
 
 function getTicketHistory() {
   try {
     const raw = localStorage.getItem(LS_KEY_HISTORY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) {
+        let needsCleanup = false;
+        list.forEach(item => {
+          if (item && item.rawHTML) {
+            idbSaveTicketHTML(item.pnr, item.rawHTML);
+            item.hasHTML = true;
+            delete item.rawHTML;
+            needsCleanup = true;
+          }
+        });
+        if (needsCleanup) {
+          try {
+            localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(list));
+          } catch (e) {}
+        }
+        return list;
+      }
+    }
   } catch (e) {
     console.warn('Failed to load history:', e);
   }
@@ -2432,6 +2531,9 @@ function saveTicketToHistory(options = { promptOverwrite: false }) {
     }
   }
 
+  // Save large rawHTML to IndexedDB (No 5MB localStorage quota limit!)
+  idbSaveTicketHTML(pnr, state.rawHTML);
+
   const routesStr = (data.f || []).map(f => {
     let r = (f.from || '') + ' → ' + (f.to || '');
     if (f.dd) r += ' (' + f.dd + ')';
@@ -2461,7 +2563,7 @@ function saveTicketToHistory(options = { promptOverwrite: false }) {
     fontFamily: state.fontFamily,
     fontScale: state.fontScale,
     useGradient: state.useGradient,
-    rawHTML: state.rawHTML,
+    hasHTML: true,
     fileName: state.fileName || (pnr + '.html'),
     savedAtTimestamp: Date.now(),
     updatedAt: new Date().toLocaleString('vi-VN', {
@@ -2502,7 +2604,11 @@ async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
   try {
     const hist = getTicketHistory();
     const rec = customRecord || hist.find(h => h.pnr === cleanPnr);
-    const htmlToSync = getCleanRawHTML((rec && rec.rawHTML) || state.rawHTML);
+    let rawHTMLToSync = (rec && rec.rawHTML) || (state.rawHTML && (state.ticketData?.p === cleanPnr || (state.fileName && state.fileName.includes(cleanPnr))) ? state.rawHTML : null);
+    if (!rawHTMLToSync) {
+      rawHTMLToSync = await idbGetTicketHTML(cleanPnr);
+    }
+    const htmlToSync = getCleanRawHTML(rawHTMLToSync || state.rawHTML);
     const payload = {
       pnr: cleanPnr,
       ticketData: ticketData,
@@ -2872,14 +2978,61 @@ async function downloadQRByPnr(pnr) {
   }
 }
 
-function loadTicketFromHistory(pnr) {
+async function loadTicketFromHistory(pnr) {
   const history = getTicketHistory();
   const item = history.find(h => h.pnr === pnr);
   if (!item) {
     showToast('Không tìm thấy thông tin booking', 'error');
     return;
   }
-  if (!item.rawHTML) {
+
+  // 1. Try to obtain rawHTML
+  let rawHTML = item.rawHTML || null;
+
+  // 1.1 In-memory check
+  if (!rawHTML && state.rawHTML && (state.ticketData?.p === pnr || (state.fileName && state.fileName.includes(pnr)))) {
+    rawHTML = state.rawHTML;
+  }
+
+  // 1.2 IndexedDB check
+  if (!rawHTML) {
+    try {
+      rawHTML = await idbGetTicketHTML(pnr);
+    } catch (e) {
+      console.warn('idbGetTicketHTML error:', e);
+    }
+  }
+
+  // 1.3 Cloud Upstash check (/api/ticket?pnr=...)
+  if (!rawHTML) {
+    showToast('⏳ Đang tải bản thiết kế vé từ hệ thống...', '');
+    try {
+      const res = await fetch('/api/ticket?pnr=' + encodeURIComponent(pnr));
+      if (res.ok) {
+        const cloudData = await res.json();
+        const rec = cloudData.record || {};
+        rawHTML = rec.rawHTML || cloudData.rawHTML || null;
+        if (rawHTML) {
+          await idbSaveTicketHTML(pnr, rawHTML);
+        }
+      }
+    } catch (err) {
+      console.warn('Fetch cloud ticket error:', err);
+    }
+  }
+
+  // If still no rawHTML (e.g. ticket was created on mobile or before rawHTML storage was supported)
+  if (!rawHTML) {
+    if (item.ticketData) {
+      state.ticketData = item.ticketData;
+      state.themeColor = item.themeColor || BRAND_DEFAULT;
+      state.shortUrl = item.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+      state.mobileUrl = item.mobileUrl || generateMobileTicketUrl(item.ticketData);
+      closeHistoryModal();
+      openMobileQRModal();
+      showToast('ℹ️ Vé này lưu dạng tóm tắt (chưa có file gốc). Đang mở Vé Mobile & QR!', 'info');
+      return;
+    }
     const targetUrl = item.shortUrl || item.mobileUrl || ('https://eticket.thesimple.media/' + pnr);
     window.open(targetUrl, '_blank');
     closeHistoryModal();
@@ -2887,10 +3040,11 @@ function loadTicketFromHistory(pnr) {
     return;
   }
 
-  state.rawHTML = item.rawHTML;
+  // Assign rawHTML to state and DOM
+  state.rawHTML = rawHTML;
   state.fileName = item.fileName || (pnr + '.html');
-  fileNameEl.textContent = state.fileName;
-  fileSizeEl.textContent = formatBytes(state.rawHTML.length);
+  if (fileNameEl) fileNameEl.textContent = state.fileName;
+  if (fileSizeEl) fileSizeEl.textContent = formatBytes(state.rawHTML.length);
 
   state.themeColor = item.themeColor || BRAND_DEFAULT;
   state.fontFamily = item.fontFamily || 'Inter';
@@ -2898,6 +3052,31 @@ function loadTicketFromHistory(pnr) {
   state.useGradient = item.useGradient !== undefined ? item.useGradient : false;
   state.shortUrl = item.shortUrl || ('https://eticket.thesimple.media/' + pnr);
   state.mobileUrl = item.mobileUrl || null;
+
+  // Restore airline name and logo
+  state.airlineName = item.airline || state.originalAirlineName || 'VIETJET AIR';
+  state.airlineLogo = item.airlineLogo || null;
+  if (airlineNameInput) airlineNameInput.value = state.airlineName;
+  if (airlineLogoPreviewRow) {
+    if (state.airlineLogo) {
+      if (airlineLogoPreviewImg) airlineLogoPreviewImg.src = state.airlineLogo;
+      airlineLogoPreviewRow.style.display = 'flex';
+    } else {
+      airlineLogoPreviewRow.style.display = 'none';
+    }
+  }
+
+  // Parse ticket data & extract remarks
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(state.rawHTML, 'text/html');
+    state.ticketData = item.ticketData || extractTicketData(doc);
+    state.luuYOriginal = extractLuuY(state.rawHTML);
+    state.luuYContent = state.luuYOriginal;
+    if (luuYEditor) luuYEditor.innerHTML = state.luuYContent || '';
+  } catch (e) {
+    console.warn('Error parsing ticket data:', e);
+  }
 
   // Sync inputs
   if (colorPicker) colorPicker.value = state.themeColor;
@@ -2907,15 +3086,15 @@ function loadTicketFromHistory(pnr) {
   if (fontValue) fontValue.textContent = state.fontScale + '%';
   if (gradientToggle) gradientToggle.checked = state.useGradient;
 
-  // Show UI
-  fileInfo.style.display = 'flex';
-  panelColors.style.display = '';
-  panelFont.style.display = '';
-  panelAirline.style.display = '';
-  panelLuuY.style.display = '';
-  previewEmpty.style.display = 'none';
-  previewToolbar.style.display = 'flex';
-  previewContainer.style.display = 'flex';
+  // Show UI panels
+  if (fileInfo) fileInfo.style.display = 'flex';
+  if (panelColors) panelColors.style.display = '';
+  if (panelFont) panelFont.style.display = '';
+  if (panelAirline) panelAirline.style.display = '';
+  if (panelLuuY) panelLuuY.style.display = '';
+  if (previewEmpty) previewEmpty.style.display = 'none';
+  if (previewToolbar) previewToolbar.style.display = 'flex';
+  if (previewContainer) previewContainer.style.display = 'flex';
 
   applyColor(state.themeColor);
   closeHistoryModal();
@@ -2985,6 +3164,7 @@ function deleteHistoryItem(pnr) {
   try {
     localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(history));
   } catch (e) {}
+  idbDeleteTicketHTML(pnr);
   renderHistoryList(historySearchInput ? historySearchInput.value : '');
   
   // Also delete from Upstash cloud
@@ -2997,6 +3177,7 @@ function clearAllHistory() {
   try {
     localStorage.removeItem(LS_KEY_HISTORY);
   } catch (e) {}
+  idbClearAllTickets();
   renderHistoryList();
 
   // Also flush all test tickets from Upstash cloud
