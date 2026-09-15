@@ -1206,24 +1206,46 @@
       const isZalo = /zalo/i.test(navigator.userAgent);
 
       // 1. In Zalo In-App Browser:
-      // Show notice banner on top, copy link & provide instant feedback without popup/download error
+      // Copy link + try to open in external browser (Safari/Chrome)
       if (isZalo) {
-        if (zaloNoticeBanner) {
-          zaloNoticeBanner.style.display = 'flex';
-          zaloNoticeBanner.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          zaloNoticeBanner.classList.add('banner-pulse');
-          setTimeout(() => zaloNoticeBanner.classList.remove('banner-pulse'), 1500);
+        const url = window.location.href;
+
+        // Copy link to clipboard first (always works)
+        copyTicketLink(null);
+
+        // Try multiple methods to escape Zalo WebView
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        let opened = false;
+
+        try {
+          if (isAndroid) {
+            // Android: intent:// scheme can force open default browser
+            const intentUrl = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;action=android.intent.action.VIEW;end';
+            window.location.href = intentUrl;
+            opened = true;
+          } else {
+            // iOS: try window.open with _blank (sometimes escapes WebView)
+            const w = window.open(url, '_blank');
+            if (w) opened = true;
+          }
+        } catch (e) {
+          console.warn('Open external browser failed:', e);
         }
+
+        // Visual feedback on button
         const btnSave = document.getElementById('btn-save-img');
         const prevText = btnSave.innerHTML;
-        btnSave.innerHTML = '✅ ĐÃ COPY LINK VÉ!';
+        btnSave.innerHTML = '✅ Đã copy link vé!';
         btnSave.style.background = '#10B981';
         setTimeout(() => {
           btnSave.innerHTML = prevText;
           btnSave.style.background = '';
         }, 3500);
-        copyTicketLink(null);
-        showToast('👉 Bấm [ ••• ] góc trên Zalo ➔ Mở bằng trình duyệt (Safari/Chrome)');
+
+        if (!opened) {
+          showToast('✅ Đã copy link! Mở Safari/Chrome và dán link để lưu ảnh vé.');
+        }
         return;
       }
 
