@@ -2597,6 +2597,26 @@ function getCleanRawHTML(html) {
   return html.replace(/@font-face\s*\{[\s\S]*?\}/gi, '').trim();
 }
 
+// Compress HTML for cloud storage using LZ-String (~80% size reduction)
+function compressForCloud(html) {
+  if (!html) return null;
+  if (typeof LZString === 'undefined') return html;
+  return LZString.compressToBase64(html);
+}
+
+// Decompress HTML from cloud storage
+function decompressFromCloud(compressed) {
+  if (!compressed) return null;
+  if (typeof LZString === 'undefined') return compressed;
+  try {
+    const result = LZString.decompressFromBase64(compressed);
+    // If decompression returns null/empty, it was likely not compressed (legacy data)
+    return result || compressed;
+  } catch (e) {
+    return compressed;
+  }
+}
+
 // ─── Cloud Synchronization (Upstash Redis <-> LocalStorage) ───
 async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
   if (!pnr) return null;
@@ -2609,6 +2629,7 @@ async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
       rawHTMLToSync = await idbGetTicketHTML(cleanPnr);
     }
     const htmlToSync = getCleanRawHTML(rawHTMLToSync || state.rawHTML);
+    const compressedHTML = compressForCloud(htmlToSync);
     const payload = {
       pnr: cleanPnr,
       ticketData: ticketData,
@@ -2625,7 +2646,8 @@ async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
         fontFamily: rec.fontFamily || 'Inter',
         fontScale: rec.fontScale || 100,
         ticketData: ticketData,
-        rawHTML: htmlToSync,
+        rawHTML: compressedHTML,
+        htmlCompressed: true,
         fileName: rec.fileName || (cleanPnr + '.html'),
         savedAtTimestamp: rec.savedAtTimestamp || Date.now(),
         updatedAt: rec.updatedAt || new Date().toLocaleString('vi-VN', {
@@ -2690,7 +2712,7 @@ function normalizeCloudTicket(cloudItem) {
     fontFamily: cloudItem.fontFamily || 'Inter',
     fontScale: cloudItem.fontScale || 100,
     useGradient: cloudItem.useGradient !== undefined ? cloudItem.useGradient : false,
-    rawHTML: cloudItem.rawHTML || null,
+    rawHTML: cloudItem.htmlCompressed ? decompressFromCloud(cloudItem.rawHTML) : (cloudItem.rawHTML || null),
     fileName: cloudItem.fileName || (pnr + '.html'),
     savedAtTimestamp: cloudItem.savedAtTimestamp || Date.now(),
     updatedAt: cloudItem.updatedAt || 'Đồng bộ từ đám mây'
@@ -3011,7 +3033,12 @@ async function loadTicketFromHistory(pnr) {
       if (res.ok) {
         const cloudData = await res.json();
         const rec = cloudData.record || {};
-        rawHTML = rec.rawHTML || cloudData.rawHTML || null;
+        let cloudHTML = rec.rawHTML || cloudData.rawHTML || null;
+        // Decompress if stored compressed
+        if (cloudHTML && (rec.htmlCompressed || cloudData.htmlCompressed)) {
+          cloudHTML = decompressFromCloud(cloudHTML);
+        }
+        rawHTML = cloudHTML;
         if (rawHTML) {
           await idbSaveTicketHTML(pnr, rawHTML);
         }
