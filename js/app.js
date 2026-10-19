@@ -1023,17 +1023,17 @@ function formatFlightSummary(data, customLink = '') {
   return txt.trim();
 }
 
-function openMobileQRModal() {
+function openMobileQRModal(customTicketData = null) {
   try {
-    const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-    if (!iDoc || !iDoc.body) {
-      showToast('Chưa có dữ liệu vé!', 'error');
-      return;
-    }
-
-    const ticketData = extractTicketData(iDoc);
+    let ticketData = customTicketData || state.ticketData;
     if (!ticketData) {
-      showToast('Chưa trích xuất được dữ liệu vé!', 'error');
+      const iDoc = previewIframe?.contentDocument || previewIframe?.contentWindow?.document;
+      if (iDoc && iDoc.body) {
+        ticketData = extractTicketData(iDoc);
+      }
+    }
+    if (!ticketData || !ticketData.p) {
+      showToast('Chưa có dữ liệu vé!', 'error');
       return;
     }
     state.ticketData = ticketData;
@@ -2299,18 +2299,21 @@ if (btnCopyMobileImg) {
 const btnModalSaveCloud = $('btn-modal-save-cloud');
 if (btnModalSaveCloud) {
   btnModalSaveCloud.addEventListener('click', async () => {
-    const iDoc = previewIframe.contentDocument || previewIframe.contentWindow.document;
-    if (!iDoc || !iDoc.body) {
-      showToast('⚠️ Chưa có thông tin vé!', '');
-      return;
+    let data = state.ticketData;
+    if (!data || !data.p) {
+      const iDoc = previewIframe?.contentDocument || previewIframe?.contentWindow?.document;
+      if (iDoc && iDoc.body) {
+        data = extractTicketData(iDoc);
+      }
     }
-    const data = extractTicketData(iDoc);
     if (!data || !data.p) {
       showToast('⚠️ Không tìm thấy mã đặt chỗ (PNR)!', '');
       return;
     }
     const pnr = (data.p || '').trim().toUpperCase();
-    saveTicketToHistory({ promptOverwrite: false });
+    if (state.rawHTML) {
+      saveTicketToHistory({ promptOverwrite: false });
+    }
 
     btnModalSaveCloud.disabled = true;
     btnModalSaveCloud.innerHTML = '⏳ Đang lưu...';
@@ -2637,10 +2640,24 @@ async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
   try {
     const hist = getTicketHistory();
     const rec = customRecord || hist.find(h => h.pnr === cleanPnr);
-    // Lightweight cloud record (~1-3 KB): NO heavy rawHTML
+
+    // Prepare compressed rawHTML if available
+    let compressedHTML = null;
+    let rawHTMLToCompress = state.rawHTML;
+    if (!rawHTMLToCompress) {
+      try {
+        rawHTMLToCompress = await idbGetTicketHTML(cleanPnr);
+      } catch (e) {}
+    }
+    if (rawHTMLToCompress) {
+      const cleanHTML = getCleanRawHTML(rawHTMLToCompress);
+      compressedHTML = compressForCloud(cleanHTML);
+    }
+
     const payload = {
       pnr: cleanPnr,
       ticketData: ticketData,
+      rawHTML: compressedHTML,
       record: rec ? {
         pnr: cleanPnr,
         airline: rec.airline,
@@ -3028,13 +3045,25 @@ async function loadTicketFromHistory(pnr) {
   }
 
   // 1.3 Cloud Upstash check (/api/ticket?pnr=...)
-  if (!rawHTML && !item.ticketData) {
+  if (!rawHTML) {
     try {
+      showToast('⏳ Đang tải chi tiết vé ' + pnr + '...', '');
       const res = await fetch('/api/ticket?pnr=' + encodeURIComponent(pnr));
       if (res.ok) {
         const cloudData = await res.json();
+        if (cloudData.rawHTML) {
+          rawHTML = decompressFromCloud(cloudData.rawHTML);
+          if (rawHTML) {
+            idbSaveTicketHTML(pnr, rawHTML);
+          }
+        }
         if (cloudData.ticketData) {
           item.ticketData = cloudData.ticketData;
+        }
+        if (cloudData.record) {
+          if (cloudData.record.airline) item.airline = cloudData.record.airline;
+          if (cloudData.record.airlineLogo) item.airlineLogo = cloudData.record.airlineLogo;
+          if (cloudData.record.themeColor) item.themeColor = cloudData.record.themeColor;
         }
       }
     } catch (err) {
@@ -3042,7 +3071,7 @@ async function loadTicketFromHistory(pnr) {
     }
   }
 
-  // If still no rawHTML (e.g. ticket was created on mobile or before rawHTML storage was supported)
+  // If still no rawHTML (e.g. ticket was created on mobile or saved without rawHTML)
   if (!rawHTML) {
     if (item.ticketData) {
       state.ticketData = item.ticketData;
@@ -3050,8 +3079,8 @@ async function loadTicketFromHistory(pnr) {
       state.shortUrl = (item.shortUrl && !item.shortUrl.includes('thesimple.media')) ? item.shortUrl : getBookingShortUrl(pnr);
       state.mobileUrl = item.mobileUrl || generateMobileTicketUrl(item.ticketData);
       closeHistoryModal();
-      openMobileQRModal();
-      showToast('ℹ️ Vé này lưu dạng tóm tắt (chưa có file gốc). Đang mở Vé Mobile & QR!', 'info');
+      openMobileQRModal(item.ticketData);
+      showToast('ℹ️ Vé này lưu dạng di động (Mobile). Đang mở Vé Mobile & QR!', 'info');
       return;
     }
     const targetUrl = (item.shortUrl && !item.shortUrl.includes('thesimple.media')) ? item.shortUrl : (item.mobileUrl || getBookingShortUrl(pnr));

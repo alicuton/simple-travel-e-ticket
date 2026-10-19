@@ -87,37 +87,22 @@ module.exports = async (req, res) => {
                 let item = typeof v === 'string' ? JSON.parse(v) : v;
                 if (!item || typeof item !== 'object') continue;
 
-                // Check if this record still contains heavy rawHTML / htmlCompressed
-                let hadHeavyHTML = false;
-                if ('rawHTML' in item || 'htmlCompressed' in item) {
-                  delete item.rawHTML;
-                  delete item.htmlCompressed;
-                  hadHeavyHTML = true;
+                // When returning list of all tickets, strip rawHTML / htmlCompressed from the response
+                // so the MGET payload stays tiny (~2KB per ticket)
+                const slimItem = { ...item };
+                delete slimItem.rawHTML;
+                delete slimItem.htmlCompressed;
+                if (slimItem.record) {
+                  slimItem.record = { ...slimItem.record };
+                  delete slimItem.record.rawHTML;
+                  delete slimItem.record.htmlCompressed;
                 }
-                if (item.record && ('rawHTML' in item.record || 'htmlCompressed' in item.record)) {
-                  delete item.record.rawHTML;
-                  delete item.record.htmlCompressed;
-                  hadHeavyHTML = true;
-                }
-                if (item.ticketData && item.ticketData.rawHTML) {
-                  delete item.ticketData.rawHTML;
-                  hadHeavyHTML = true;
+                if (slimItem.ticketData && slimItem.ticketData.rawHTML) {
+                  slimItem.ticketData = { ...slimItem.ticketData };
+                  delete slimItem.ticketData.rawHTML;
                 }
 
-                // Auto-heal / purge: rewrite cleaned slim record back to Upstash Redis
-                if (hadHeavyHTML && keyName) {
-                  purgedCount++;
-                  fetch(kvUrl, {
-                    method: 'POST',
-                    headers: {
-                      Authorization: `Bearer ${kvToken}`,
-                      'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(['SET', keyName, JSON.stringify(item)])
-                  }).catch(() => {});
-                }
-
-                tickets.push(item);
+                tickets.push(slimItem);
               } catch (e) {}
             }
           } catch (batchErr) {
@@ -125,7 +110,7 @@ module.exports = async (req, res) => {
           }
         }
 
-        return res.status(200).json({ success: true, tickets, purgedCount });
+        return res.status(200).json({ success: true, tickets });
       } catch (err) {
         console.error('Fetch all tickets error:', err);
         return res.status(500).json({ error: 'Failed to retrieve tickets', details: err.message });
@@ -154,33 +139,16 @@ module.exports = async (req, res) => {
         } catch (e) {}
       }
 
-      // Strip heavy rawHTML if present and self-heal in background
-      if (rawData && typeof rawData === 'object') {
-        let hadHeavyHTML = false;
-        if ('rawHTML' in rawData || 'htmlCompressed' in rawData) {
-          delete rawData.rawHTML;
-          delete rawData.htmlCompressed;
-          hadHeavyHTML = true;
-        }
-        if (rawData.record && ('rawHTML' in rawData.record || 'htmlCompressed' in rawData.record)) {
-          delete rawData.record.rawHTML;
-          delete rawData.record.htmlCompressed;
-          hadHeavyHTML = true;
-        }
-        if (hadHeavyHTML) {
-          fetch(kvUrl, {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${kvToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(['SET', `ticket:${cleanPnr}`, JSON.stringify(rawData)])
-          }).catch(() => {});
-        }
-      }
-
       const ticketData = (rawData && rawData.ticketData) ? rawData.ticketData : rawData;
-      return res.status(200).json({ success: true, pnr: cleanPnr, ticketData, record: rawData });
+      const rawHTML = (rawData && (rawData.rawHTML || rawData.htmlCompressed || (rawData.record && (rawData.record.rawHTML || rawData.record.htmlCompressed)))) || null;
+
+      return res.status(200).json({ 
+        success: true, 
+        pnr: cleanPnr, 
+        ticketData, 
+        rawHTML, 
+        record: rawData 
+      });
     } catch (err) {
       console.error('Fetch ticket error:', err);
       return res.status(500).json({ error: 'Failed to retrieve ticket', details: err.message });
@@ -193,24 +161,23 @@ module.exports = async (req, res) => {
     if (typeof body === 'string') {
       try { body = JSON.parse(body); } catch(e) {}
     }
-    const { pnr, ticketData, record } = body || {};
+    const { pnr, ticketData, record, rawHTML } = body || {};
     if (!pnr || (!ticketData && !record)) {
       return res.status(400).json({ error: 'Missing pnr or ticketData/record' });
     }
     const cleanPnr = String(pnr).trim().toUpperCase();
 
     try {
-      // Build lightweight record: STRICTLY strip all rawHTML / htmlCompressed payloads
       let toSave = record ? { ...record } : { pnr: cleanPnr, ticketData };
-      delete toSave.rawHTML;
-      delete toSave.htmlCompressed;
-      if (toSave.record) {
-        delete toSave.record.rawHTML;
-        delete toSave.record.htmlCompressed;
+      toSave.pnr = cleanPnr;
+      if (ticketData) toSave.ticketData = ticketData;
+
+      // Save rawHTML if provided (compressed LZ-String base64 or cleaned HTML)
+      const htmlToSave = rawHTML || (record && (record.rawHTML || record.htmlCompressed));
+      if (htmlToSave) {
+        toSave.rawHTML = htmlToSave;
       }
-      if (ticketData && ticketData.rawHTML) {
-        delete ticketData.rawHTML;
-      }
+
       // Safeguard: airlineLogo should not exceed 25KB base64
       if (toSave.airlineLogo && typeof toSave.airlineLogo === 'string' && toSave.airlineLogo.length > 25000) {
         toSave.airlineLogo = null;
@@ -225,6 +192,7 @@ module.exports = async (req, res) => {
         },
         body: JSON.stringify(['SET', `ticket:${cleanPnr}`, payloadStr])
       });
+      const data = await response.json();
       const host = req.headers['x-forwarded-host'] || req.headers.host || 'eticket.simpletravel.vn';
       const proto = req.headers['x-forwarded-proto'] || 'https';
       const shortUrl = `${proto}://${host}/${cleanPnr}`;
