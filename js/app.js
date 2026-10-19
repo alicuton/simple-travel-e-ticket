@@ -40,7 +40,7 @@ const DEFAULT_LUUY_TEMPLATES = [
 <p>🌍 <strong>Hành khách quốc tịch nước ngoài:</strong> Hộ chiếu bản gốc còn hạn &amp; Visa (nếu yêu cầu).</p>
 <p>🇻🇳 <strong>Hành khách Việt Nam:</strong> CCCD / Hộ chiếu / VNeID mức 2. Trẻ em: Giấy khai sinh bản gốc hoặc trích lục.</p>
 <p>🤰 <strong>Hành khách mang thai:</strong> Vui lòng thông báo Đại lý trước khi xác nhận dịch vụ.</p>
-<p>📞 <strong>Hỗ trợ:</strong> 0768.188.224 - <strong>Email:</strong> booking@thesimple.media</p>
+<p>📞 <strong>Hỗ trợ:</strong> 0768.188.224 - <strong>Email:</strong> booking@simpletravel.vn</p>
 <p style="color:#f39c12;text-align:center;">✨ Chúc Quý khách có chuyến bay an toàn &amp; thuận lợi ✨</p>`
   },
   {
@@ -55,7 +55,7 @@ const DEFAULT_LUUY_TEMPLATES = [
 <p>🌍 <strong>Foreign Citizens:</strong> Original valid Passport &amp; required Visas/Entry permits.</p>
 <p>🇻🇳 <strong>Vietnamese Citizens:</strong> National ID (CCCD) / Passport / VNeID Level 2. Children: Original Birth Certificate.</p>
 <p>🤰 <strong>Expectant Mothers:</strong> Please notify the booking agent prior to flight confirmation.</p>
-<p>📞 <strong>Support:</strong> (+84) 0768.188.224 - <strong>Email:</strong> booking@thesimple.media</p>
+<p>📞 <strong>Support:</strong> (+84) 0768.188.224 - <strong>Email:</strong> booking@simpletravel.vn</p>
 <p style="color:#f39c12;text-align:center;">✨ Wish you a safe, smooth and pleasant flight ✨</p>`
   },
   {
@@ -69,7 +69,7 @@ const DEFAULT_LUUY_TEMPLATES = [
 <p><span style="color:#d35400;"><strong>GIẤY TỜ / TRAVEL DOCUMENTS:</strong></span></p>
 <p>🌍 <strong>Khách nước ngoài / Foreigners:</strong> Hộ chiếu còn hạn &amp; Visa / Valid Passport &amp; required Visa.</p>
 <p>🇻🇳 <strong>Khách Việt Nam / Vietnamese:</strong> CCCD / Hộ chiếu / VNeID mức 2. Trẻ em: Giấy khai sinh.</p>
-<p>📞 <strong>Hotline:</strong> 0768.188.224 - <strong>Email:</strong> booking@thesimple.media</p>
+<p>📞 <strong>Hotline:</strong> 0768.188.224 - <strong>Email:</strong> booking@simpletravel.vn</p>
 <p style="color:#f39c12;text-align:center;">✨ Chúc Quý khách chuyến bay tốt đẹp / Have a pleasant flight ✨</p>`
   }
 ];
