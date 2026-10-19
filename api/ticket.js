@@ -1,7 +1,7 @@
 // Serverless function on Vercel: /api/ticket
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
@@ -24,10 +24,12 @@ module.exports = async (req, res) => {
     });
   }
 
+  // ─── GET Handler ───────────────────────────────────────────
   if (req.method === 'GET') {
-    const { pnr, all } = req.query;
-    // 1. Get all tickets list for cross-device sync (e.g., Mobile <-> Desktop)
-    if (all === 'true' || all === '1' || (!pnr && req.url && req.url.includes('all=true'))) {
+    const { pnr, all, purge } = req.query;
+
+    // 1. Get all tickets list (or purge heavy HTML from legacy tickets)
+    if (all === 'true' || all === '1' || purge === 'true' || (!pnr && req.url && req.url.includes('all=true'))) {
       try {
         let keys = [];
         try {
@@ -57,38 +59,80 @@ module.exports = async (req, res) => {
           return res.status(200).json({ success: true, tickets: [] });
         }
 
-        // Fetch all values via MGET
-        const mgetRes = await fetch(kvUrl, {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${kvToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(['MGET', ...keys])
-        });
-        const mgetData = await mgetRes.json();
-        const values = Array.isArray(mgetData.result) ? mgetData.result : [];
+        // Fetch values in small batches of 4 to strictly stay under 10MB request/response limit
+        const BATCH_SIZE = 4;
         const tickets = [];
-        values.forEach(v => {
-          if (v) {
-            try {
-              const item = typeof v === 'string' ? JSON.parse(v) : v;
-              if (item && typeof item === 'object') {
-                const { rawHTML, ...summary } = item;
-                tickets.push(summary);
-              } else {
+        let purgedCount = 0;
+
+        for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+          const batchKeys = keys.slice(i, i + BATCH_SIZE);
+          try {
+            const mgetRes = await fetch(kvUrl, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${kvToken}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(['MGET', ...batchKeys])
+            });
+            const mgetData = await mgetRes.json();
+            const values = Array.isArray(mgetData.result) ? mgetData.result : [];
+
+            for (let j = 0; j < values.length; j++) {
+              const v = values[j];
+              const keyName = batchKeys[j];
+              if (!v) continue;
+
+              try {
+                let item = typeof v === 'string' ? JSON.parse(v) : v;
+                if (!item || typeof item !== 'object') continue;
+
+                // Check if this record still contains heavy rawHTML / htmlCompressed
+                let hadHeavyHTML = false;
+                if ('rawHTML' in item || 'htmlCompressed' in item) {
+                  delete item.rawHTML;
+                  delete item.htmlCompressed;
+                  hadHeavyHTML = true;
+                }
+                if (item.record && ('rawHTML' in item.record || 'htmlCompressed' in item.record)) {
+                  delete item.record.rawHTML;
+                  delete item.record.htmlCompressed;
+                  hadHeavyHTML = true;
+                }
+                if (item.ticketData && item.ticketData.rawHTML) {
+                  delete item.ticketData.rawHTML;
+                  hadHeavyHTML = true;
+                }
+
+                // Auto-heal / purge: rewrite cleaned slim record back to Upstash Redis
+                if (hadHeavyHTML && keyName) {
+                  purgedCount++;
+                  fetch(kvUrl, {
+                    method: 'POST',
+                    headers: {
+                      Authorization: `Bearer ${kvToken}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(['SET', keyName, JSON.stringify(item)])
+                  }).catch(() => {});
+                }
+
                 tickets.push(item);
-              }
-            } catch(e) {}
+              } catch (e) {}
+            }
+          } catch (batchErr) {
+            console.warn('Batch MGET error:', batchErr);
           }
-        });
-        return res.status(200).json({ success: true, tickets });
+        }
+
+        return res.status(200).json({ success: true, tickets, purgedCount });
       } catch (err) {
         console.error('Fetch all tickets error:', err);
         return res.status(500).json({ error: 'Failed to retrieve tickets', details: err.message });
       }
     }
 
+    // 2. Get single ticket by PNR
     if (!pnr) {
       return res.status(400).json({ error: 'Missing PNR' });
     }
@@ -109,7 +153,32 @@ module.exports = async (req, res) => {
           rawData = JSON.parse(rawData);
         } catch (e) {}
       }
-      // If full record was saved, extract ticketData
+
+      // Strip heavy rawHTML if present and self-heal in background
+      if (rawData && typeof rawData === 'object') {
+        let hadHeavyHTML = false;
+        if ('rawHTML' in rawData || 'htmlCompressed' in rawData) {
+          delete rawData.rawHTML;
+          delete rawData.htmlCompressed;
+          hadHeavyHTML = true;
+        }
+        if (rawData.record && ('rawHTML' in rawData.record || 'htmlCompressed' in rawData.record)) {
+          delete rawData.record.rawHTML;
+          delete rawData.record.htmlCompressed;
+          hadHeavyHTML = true;
+        }
+        if (hadHeavyHTML) {
+          fetch(kvUrl, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${kvToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(['SET', `ticket:${cleanPnr}`, JSON.stringify(rawData)])
+          }).catch(() => {});
+        }
+      }
+
       const ticketData = (rawData && rawData.ticketData) ? rawData.ticketData : rawData;
       return res.status(200).json({ success: true, pnr: cleanPnr, ticketData, record: rawData });
     } catch (err) {
@@ -118,6 +187,7 @@ module.exports = async (req, res) => {
     }
   }
 
+  // ─── POST Handler ──────────────────────────────────────────
   if (req.method === 'POST') {
     let body = req.body;
     if (typeof body === 'string') {
@@ -128,10 +198,25 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing pnr or ticketData/record' });
     }
     const cleanPnr = String(pnr).trim().toUpperCase();
+
     try {
-      // Store the full record or ticketData object
-      const toSave = record || { pnr: cleanPnr, ticketData };
-      const payloadStr = typeof toSave === 'string' ? toSave : JSON.stringify(toSave);
+      // Build lightweight record: STRICTLY strip all rawHTML / htmlCompressed payloads
+      let toSave = record ? { ...record } : { pnr: cleanPnr, ticketData };
+      delete toSave.rawHTML;
+      delete toSave.htmlCompressed;
+      if (toSave.record) {
+        delete toSave.record.rawHTML;
+        delete toSave.record.htmlCompressed;
+      }
+      if (ticketData && ticketData.rawHTML) {
+        delete ticketData.rawHTML;
+      }
+      // Safeguard: airlineLogo should not exceed 25KB base64
+      if (toSave.airlineLogo && typeof toSave.airlineLogo === 'string' && toSave.airlineLogo.length > 25000) {
+        toSave.airlineLogo = null;
+      }
+
+      const payloadStr = JSON.stringify(toSave);
       const response = await fetch(kvUrl, {
         method: 'POST',
         headers: {
@@ -140,11 +225,14 @@ module.exports = async (req, res) => {
         },
         body: JSON.stringify(['SET', `ticket:${cleanPnr}`, payloadStr])
       });
-      const data = await response.json();
+      const host = req.headers['x-forwarded-host'] || req.headers.host || 'eticket.simpletravel.vn';
+      const proto = req.headers['x-forwarded-proto'] || 'https';
+      const shortUrl = `${proto}://${host}/${cleanPnr}`;
+
       return res.status(200).json({ 
         success: true, 
         pnr: cleanPnr, 
-        shortUrl: `https://eticket.thesimple.media/${cleanPnr}`,
+        shortUrl: shortUrl,
         result: data 
       });
     } catch (err) {
@@ -153,11 +241,11 @@ module.exports = async (req, res) => {
     }
   }
 
+  // ─── DELETE Handler ────────────────────────────────────────
   if (req.method === 'DELETE') {
     const { pnr, all } = req.query;
     try {
       if (all === 'true' || all === '1') {
-        // Find all ticket:* keys and delete them
         let keys = [];
         try {
           const keysRes = await fetch(kvUrl, {

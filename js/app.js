@@ -777,15 +777,25 @@ function generateMobileTicketUrl(ticketData) {
 
   const compact = 'v3:' + [p, a, c, g, fls, pxs].join('|');
 
-  let origin = window.location.origin && window.location.origin !== 'null' ? window.location.origin : '';
-  // Default to official production subdomain if running locally or offline
-  if (!origin || origin.includes('localhost') || origin.includes('127.0.0.1') || origin.startsWith('file')) {
-    origin = 'https://eticket.thesimple.media';
+  return getAppOrigin() + '/m.html#' + encodeURI(compact);
+}
+
+const DEFAULT_APP_DOMAIN = 'https://eticket.simpletravel.vn';
+
+function getAppOrigin() {
+  if (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin !== 'null') {
+    const o = window.location.origin;
+    if (!o.includes('localhost') && !o.includes('127.0.0.1') && !o.startsWith('file')) {
+      return o;
+    }
   }
-  const idx = window.location.pathname.lastIndexOf('/');
-  const isCustomDomain = origin.includes('thesimple.media');
-  const basePath = (!isCustomDomain && idx !== -1) ? window.location.pathname.slice(0, idx) : '';
-  return origin + basePath + '/m.html#' + encodeURI(compact);
+  return DEFAULT_APP_DOMAIN;
+}
+
+function getBookingShortUrl(pnr) {
+  if (!pnr) return '';
+  const cleanPnr = String(pnr).trim().toUpperCase();
+  return getAppOrigin() + '/' + cleanPnr;
 }
 
 function drawStylizedLeafQR(targetCanvas, text, options = {}) {
@@ -936,7 +946,7 @@ function syncA4QRBadge(root) {
   const data = extractTicketData(iDoc);
   if (!data) return;
   const pnr = (data.p || '').trim().toUpperCase();
-  const url = pnr ? ('https://eticket.thesimple.media/' + pnr) : (state.shortUrl || generateMobileTicketUrl(data));
+  const url = pnr ? getBookingShortUrl(pnr) : (state.shortUrl || generateMobileTicketUrl(data));
   const qrDataUrl = getQRCodeDataUrl(url, 180);
 
   if (!qrTd) {
@@ -1043,7 +1053,7 @@ function openMobileQRModal() {
 
     if (isSaved) {
       // Booking already saved: show official short link
-      const shortUrl = (existing && existing.shortUrl) || state.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+      const shortUrl = (existing && existing.shortUrl && !existing.shortUrl.includes('thesimple.media')) ? existing.shortUrl : getBookingShortUrl(pnr);
       state.shortUrl = shortUrl;
       effectiveUrl = shortUrl;
 
@@ -2062,7 +2072,10 @@ function showToast(msg, type = '') {
 // ─── Event Listeners ────────────────────────────────────────
 
 // Upload ticket
-uploadZone.addEventListener('click', () => fileInput.click());
+uploadZone.addEventListener('click', () => {
+  fileInput.value = '';
+  fileInput.click();
+});
 fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
@@ -2303,7 +2316,7 @@ if (btnModalSaveCloud) {
     btnModalSaveCloud.innerHTML = '⏳ Đang lưu...';
     try {
       const json = await pushTicketToCloud(pnr, data);
-      const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+      const shortUrl = getBookingShortUrl(pnr);
       state.shortUrl = shortUrl;
       
       const hist = getTicketHistory();
@@ -2341,13 +2354,13 @@ if (btnModalSaveCloud) {
 
       navigator.clipboard.writeText(shortUrl).catch(() => {});
       if (json && json.success) {
-        showToast('💾 Đã lưu & kích hoạt link ngắn: eticket.thesimple.media/' + pnr, 'success');
+        showToast('💾 Đã lưu & kích hoạt link ngắn: ' + shortUrl.replace(/^https?:\/\//, ''), 'success');
       } else {
         showToast('💾 Đã lưu vào bộ nhớ máy (Đám mây chưa phản hồi)', 'info');
       }
     } catch (err) {
       console.warn('Modal save error:', err);
-      const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+      const shortUrl = getBookingShortUrl(pnr);
       state.shortUrl = shortUrl;
       if (mobileUrlInput) mobileUrlInput.value = shortUrl;
       btnModalSaveCloud.disabled = false;
@@ -2557,7 +2570,7 @@ function saveTicketToHistory(options = { promptOverwrite: false }) {
     flightDate: flightDateStr,
     flightTimestamp: flightTimestamp,
     mobileUrl: state.mobileUrl || generateMobileTicketUrl(data),
-    shortUrl: state.shortUrl || ('https://eticket.thesimple.media/' + pnr),
+    shortUrl: (state.shortUrl && !state.shortUrl.includes('thesimple.media')) ? state.shortUrl : getBookingShortUrl(pnr),
     ticketData: data,
     themeColor: state.themeColor,
     fontFamily: state.fontFamily,
@@ -2624,30 +2637,23 @@ async function pushTicketToCloud(pnr, ticketData, customRecord = null) {
   try {
     const hist = getTicketHistory();
     const rec = customRecord || hist.find(h => h.pnr === cleanPnr);
-    let rawHTMLToSync = (rec && rec.rawHTML) || (state.rawHTML && (state.ticketData?.p === cleanPnr || (state.fileName && state.fileName.includes(cleanPnr))) ? state.rawHTML : null);
-    if (!rawHTMLToSync) {
-      rawHTMLToSync = await idbGetTicketHTML(cleanPnr);
-    }
-    const htmlToSync = getCleanRawHTML(rawHTMLToSync || state.rawHTML);
-    const compressedHTML = compressForCloud(htmlToSync);
+    // Lightweight cloud record (~1-3 KB): NO heavy rawHTML
     const payload = {
       pnr: cleanPnr,
       ticketData: ticketData,
       record: rec ? {
         pnr: cleanPnr,
         airline: rec.airline,
-        airlineLogo: rec.airlineLogo || null,
+        airlineLogo: (rec.airlineLogo && rec.airlineLogo.length < 15000) ? rec.airlineLogo : null,
         routes: rec.routes || '',
         passengers: rec.passengers || '',
         flightDate: rec.flightDate || '',
         flightTimestamp: rec.flightTimestamp || 0,
-        shortUrl: rec.shortUrl || ('https://eticket.thesimple.media/' + cleanPnr),
+        shortUrl: (rec.shortUrl && !rec.shortUrl.includes('thesimple.media')) ? rec.shortUrl : getBookingShortUrl(cleanPnr),
         themeColor: rec.themeColor || BRAND_DEFAULT,
         fontFamily: rec.fontFamily || 'Inter',
         fontScale: rec.fontScale || 100,
         ticketData: ticketData,
-        rawHTML: compressedHTML,
-        htmlCompressed: true,
         fileName: rec.fileName || (cleanPnr + '.html'),
         savedAtTimestamp: rec.savedAtTimestamp || Date.now(),
         updatedAt: rec.updatedAt || new Date().toLocaleString('vi-VN', {
@@ -2694,7 +2700,7 @@ function normalizeCloudTicket(cloudItem) {
   const flightTimeStr = firstFlight.dt || '';
   const flightTimestamp = cloudItem.flightTimestamp || parseFlightDateTimestamp(flightDateStr, flightTimeStr);
 
-  const shortUrl = cloudItem.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+  const shortUrl = (cloudItem.shortUrl && !cloudItem.shortUrl.includes('thesimple.media')) ? cloudItem.shortUrl : getBookingShortUrl(pnr);
   const mobileUrl = cloudItem.mobileUrl || (tData ? generateMobileTicketUrl(tData) : shortUrl);
 
   return {
@@ -2712,7 +2718,7 @@ function normalizeCloudTicket(cloudItem) {
     fontFamily: cloudItem.fontFamily || 'Inter',
     fontScale: cloudItem.fontScale || 100,
     useGradient: cloudItem.useGradient !== undefined ? cloudItem.useGradient : false,
-    rawHTML: cloudItem.htmlCompressed ? decompressFromCloud(cloudItem.rawHTML) : (cloudItem.rawHTML || null),
+    rawHTML: null,
     fileName: cloudItem.fileName || (pnr + '.html'),
     savedAtTimestamp: cloudItem.savedAtTimestamp || Date.now(),
     updatedAt: cloudItem.updatedAt || 'Đồng bộ từ đám mây'
@@ -2783,10 +2789,6 @@ async function syncHistoryWithCloud(showNotice = false) {
         }
         if (!local.flightTimestamp && normalized.flightTimestamp) {
           local.flightTimestamp = normalized.flightTimestamp;
-          itemUpdated = true;
-        }
-        if (!local.rawHTML && normalized.rawHTML) {
-          local.rawHTML = normalized.rawHTML;
           itemUpdated = true;
         }
         if (itemUpdated) changeCount++;
@@ -2984,7 +2986,7 @@ function renderHistoryList(query = '') {
 async function downloadQRByPnr(pnr) {
   const history = getTicketHistory();
   const item = history.find(h => h.pnr === pnr);
-  const url = item?.shortUrl || item?.mobileUrl || ('https://eticket.thesimple.media/' + pnr);
+  const url = (item?.shortUrl && !item.shortUrl.includes('thesimple.media')) ? item.shortUrl : (item?.mobileUrl || getBookingShortUrl(pnr));
   if (!url) {
     showToast('Chưa có link vé để tạo mã QR', 'error');
     return;
@@ -3026,21 +3028,13 @@ async function loadTicketFromHistory(pnr) {
   }
 
   // 1.3 Cloud Upstash check (/api/ticket?pnr=...)
-  if (!rawHTML) {
-    showToast('⏳ Đang tải bản thiết kế vé từ hệ thống...', '');
+  if (!rawHTML && !item.ticketData) {
     try {
       const res = await fetch('/api/ticket?pnr=' + encodeURIComponent(pnr));
       if (res.ok) {
         const cloudData = await res.json();
-        const rec = cloudData.record || {};
-        let cloudHTML = rec.rawHTML || cloudData.rawHTML || null;
-        // Decompress if stored compressed
-        if (cloudHTML && (rec.htmlCompressed || cloudData.htmlCompressed)) {
-          cloudHTML = decompressFromCloud(cloudHTML);
-        }
-        rawHTML = cloudHTML;
-        if (rawHTML) {
-          await idbSaveTicketHTML(pnr, rawHTML);
+        if (cloudData.ticketData) {
+          item.ticketData = cloudData.ticketData;
         }
       }
     } catch (err) {
@@ -3053,14 +3047,14 @@ async function loadTicketFromHistory(pnr) {
     if (item.ticketData) {
       state.ticketData = item.ticketData;
       state.themeColor = item.themeColor || BRAND_DEFAULT;
-      state.shortUrl = item.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+      state.shortUrl = (item.shortUrl && !item.shortUrl.includes('thesimple.media')) ? item.shortUrl : getBookingShortUrl(pnr);
       state.mobileUrl = item.mobileUrl || generateMobileTicketUrl(item.ticketData);
       closeHistoryModal();
       openMobileQRModal();
       showToast('ℹ️ Vé này lưu dạng tóm tắt (chưa có file gốc). Đang mở Vé Mobile & QR!', 'info');
       return;
     }
-    const targetUrl = item.shortUrl || item.mobileUrl || ('https://eticket.thesimple.media/' + pnr);
+    const targetUrl = (item.shortUrl && !item.shortUrl.includes('thesimple.media')) ? item.shortUrl : (item.mobileUrl || getBookingShortUrl(pnr));
     window.open(targetUrl, '_blank');
     closeHistoryModal();
     showToast('📱 Đang mở xem vé: ' + pnr, 'info');
@@ -3077,7 +3071,7 @@ async function loadTicketFromHistory(pnr) {
   state.fontFamily = item.fontFamily || 'Inter';
   state.fontScale = item.fontScale || 100;
   state.useGradient = item.useGradient !== undefined ? item.useGradient : false;
-  state.shortUrl = item.shortUrl || ('https://eticket.thesimple.media/' + pnr);
+  state.shortUrl = (item.shortUrl && !item.shortUrl.includes('thesimple.media')) ? item.shortUrl : getBookingShortUrl(pnr);
   state.mobileUrl = item.mobileUrl || null;
 
   // Restore airline name and logo
@@ -3133,7 +3127,7 @@ function copyFlightSummaryByPnr(pnr) {
   const item = history.find(h => h.pnr === pnr);
   if (!item) return;
 
-  const shortLink = item.shortUrl || ('https://eticket.thesimple.media/' + item.pnr);
+  const shortLink = (item.shortUrl && !item.shortUrl.includes('thesimple.media')) ? item.shortUrl : getBookingShortUrl(item.pnr);
 
   // If item has full ticketData, use formatFlightSummary directly for identical template!
   if (item.ticketData) {
@@ -3239,7 +3233,7 @@ if (btnSaveBooking) {
     try {
       const json = await pushTicketToCloud(pnr, data);
       if (json && json.success) {
-        const shortUrl = 'https://eticket.thesimple.media/' + pnr;
+        const shortUrl = getBookingShortUrl(pnr);
         state.shortUrl = shortUrl;
         const hist = getTicketHistory();
         const rec = hist.find(h => h.pnr === pnr);
@@ -3247,7 +3241,7 @@ if (btnSaveBooking) {
           rec.shortUrl = shortUrl;
           localStorage.setItem(LS_KEY_HISTORY, JSON.stringify(hist));
         }
-        showToast('💾 Đã lưu booking & kích hoạt link: eticket.thesimple.media/' + pnr, 'success');
+        showToast('💾 Đã lưu booking & kích hoạt link: ' + shortUrl.replace(/^https?:\/\//, ''), 'success');
         return;
       }
       showToast('💾 Đã lưu vào bộ nhớ máy (Đám mây chưa phản hồi)', '');
@@ -3419,10 +3413,13 @@ function initAuth() {
 
   // Toggle password visibility
   if (btnTogglePwd && authPassword) {
+    const eyeSvg = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const eyeOffSvg = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    btnTogglePwd.innerHTML = eyeSvg;
     btnTogglePwd.addEventListener('click', () => {
       const isPwd = authPassword.type === 'password';
       authPassword.type = isPwd ? 'text' : 'password';
-      btnTogglePwd.textContent = isPwd ? '🙈' : '👁️';
+      btnTogglePwd.innerHTML = isPwd ? eyeOffSvg : eyeSvg;
     });
   }
 
